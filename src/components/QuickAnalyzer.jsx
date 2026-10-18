@@ -231,7 +231,7 @@ export default function QuickAnalyzer() {
           onDragOver={handleDrag}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-12 text-center transition cursor-pointer flex flex-col items-center justify-center min-h-[260px] ${
+          className={`border-2 border-dashed rounded-2xl p-12 text-center transition cursor-pointer flex flex-col items-center justify-center min-h-65 ${
             dragActive
               ? 'border-cyan-400 bg-cyan-950/20'
               : 'border-slate-800 hover:border-slate-700 bg-slate-950/40'
@@ -324,14 +324,14 @@ export default function QuickAnalyzer() {
                   <img
                     src={imageSrc}
                     alt="Original Upload"
-                    className="max-h-[380px] w-auto object-contain rounded-xl border border-slate-800"
+                    className="max-h-95 w-auto object-contain rounded-xl border border-slate-800"
                   />
                 </div>
                 <div className="flex flex-col items-center">
                   <span className="text-xs text-cyan-400 mb-2 font-medium">ELA Difference Map</span>
                   <canvas
                     ref={elaCanvasRef}
-                    className="max-h-[380px] w-auto object-contain rounded-xl border border-slate-800"
+                    className="max-h-95 w-auto object-contain rounded-xl border border-slate-800"
                   />
                 </div>
               </div>
@@ -340,14 +340,14 @@ export default function QuickAnalyzer() {
                 <img
                   src={imageSrc}
                   alt="Original"
-                  className="max-h-[460px] w-auto object-contain rounded-xl border border-slate-800 shadow-xl"
+                  className="max-h-115 w-auto object-contain rounded-xl border border-slate-800 shadow-xl"
                 />
               </div>
             ) : (
               <div className="flex flex-col items-center">
                 <canvas
                   ref={elaCanvasRef}
-                  className="max-h-[460px] w-auto object-contain rounded-xl border border-slate-800 shadow-xl"
+                  className="max-h-115 w-auto object-contain rounded-xl border border-slate-800 shadow-xl"
                 />
               </div>
             )}
