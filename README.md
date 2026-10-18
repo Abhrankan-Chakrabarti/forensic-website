@@ -80,19 +80,25 @@ A modern, high-performance web portal and landing page for the **Digital Image F
 
 ```text
 forensic-website/
-├── public/              # Static assets (favicons, SVG icons)
+├── .github/
+│   └── workflows/
+│       └── deploy.yml       # Automated GitHub Pages CI/CD workflow
+├── public/
+│   ├── CNAME                # Custom domain mapping (forensic.dpdns.org)
+│   ├── favicon.svg          # Platform favicon
+│   └── icons.svg            # System iconography
 ├── src/
-│   ├── assets/          # Images and graphics
-│   ├── App.css          # Component styling
-│   ├── App.jsx          # Main platform landing view & capabilities
-│   ├── index.css        # Global CSS & Tailwind imports
-│   └── main.jsx         # React application entry point
-├── eslint.config.js     # ESLint configuration
-├── index.html           # HTML template
-├── package.json         # Project metadata and dependencies
-├── vite.config.js       # Vite build configuration
-├── LICENSE              # MIT License
-└── README.md            # Project documentation
+│   ├── components/
+│   │   └── QuickAnalyzer.jsx # In-browser client-side ELA & metadata inspector
+│   ├── App.jsx              # Main landing portal & capability matrix
+│   ├── index.css            # Global Tailwind CSS imports
+│   └── main.jsx             # React application entry point
+├── eslint.config.js         # ESLint configuration
+├── index.html               # HTML template with SEO & OpenGraph tags
+├── package.json             # Project dependencies and npm scripts
+├── vite.config.js           # Vite build configuration with relative base
+├── LICENSE                  # MIT License
+└── README.md                # Project documentation
 ```
 
 ---
