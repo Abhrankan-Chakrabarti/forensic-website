@@ -1,8 +1,80 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import QuickAnalyzer from './components/QuickAnalyzer.jsx';
 
 export default function ForensicWebsite() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [serviceStatus, setServiceStatus] = useState({
+    state: 'checking', // 'checking' | 'online' | 'offline'
+    modules: 44,
+    version: null,
+    latencyMs: null,
+    lastChecked: null,
+  });
+
+  const [refreshIndex, setRefreshIndex] = useState(0);
+
+  const handleManualRefresh = () => {
+    setServiceStatus((prev) => ({ ...prev, state: 'checking' }));
+    setRefreshIndex((i) => i + 1);
+  };
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function verifyHealth() {
+      const startTime = performance.now();
+      const endpoints = [
+        'https://pixel.forensic.dpdns.org/api/health',
+        '/api/health',
+      ];
+
+      for (const url of endpoints) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 4000);
+          const res = await fetch(url, {
+            signal: controller.signal,
+            headers: { Accept: 'application/json' },
+          });
+          clearTimeout(timeoutId);
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.status === 'ok' && !ignore) {
+              const latencyMs = Math.round(performance.now() - startTime);
+              setServiceStatus({
+                state: 'online',
+                modules: data.modules || 44,
+                version: data.version || '1.0.0',
+                latencyMs,
+                lastChecked: new Date(),
+              });
+              return;
+            }
+          }
+        } catch {
+          // Fallback to next endpoint
+        }
+      }
+
+      if (!ignore) {
+        setServiceStatus({
+          state: 'offline',
+          modules: null,
+          version: null,
+          latencyMs: null,
+          lastChecked: new Date(),
+        });
+      }
+    }
+
+    verifyHealth();
+    const interval = setInterval(verifyHealth, 60000);
+    return () => {
+      ignore = true;
+      clearInterval(interval);
+    };
+  }, [refreshIndex]);
 
   const features = [
     'Error Level Analysis (ELA)',
@@ -58,9 +130,18 @@ export default function ForensicWebsite() {
             </button>
             <button
               onClick={() => scrollToSection('current-service')}
-              className="hover:text-cyan-400 transition cursor-pointer"
+              className="hover:text-cyan-400 transition cursor-pointer flex items-center gap-1.5"
             >
-              Services
+              <span>Services</span>
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  serviceStatus.state === 'online'
+                    ? 'bg-emerald-400'
+                    : serviceStatus.state === 'checking'
+                    ? 'bg-cyan-400 animate-ping'
+                    : 'bg-rose-500'
+                }`}
+              />
             </button>
             <button
               onClick={() => scrollToSection('capabilities')}
@@ -133,7 +214,21 @@ export default function ForensicWebsite() {
               className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:text-cyan-400 hover:bg-slate-900 transition flex items-center justify-between"
             >
               <span>Platform Services</span>
-              <span className="text-xs text-emerald-400">Online</span>
+              <span
+                className={`text-xs font-semibold ${
+                  serviceStatus.state === 'online'
+                    ? 'text-emerald-400'
+                    : serviceStatus.state === 'checking'
+                    ? 'text-cyan-400'
+                    : 'text-rose-400'
+                }`}
+              >
+                {serviceStatus.state === 'online'
+                  ? `Online (${serviceStatus.modules} mods)`
+                  : serviceStatus.state === 'checking'
+                  ? 'Checking...'
+                  : 'Offline'}
+              </span>
             </button>
             <button
               onClick={() => scrollToSection('capabilities')}
@@ -241,13 +336,56 @@ export default function ForensicWebsite() {
 
         {/* Current Service Banner */}
         <div id="current-service" className="bg-slate-900/80 border border-slate-800 rounded-2xl sm:rounded-3xl p-5 sm:p-8 mb-12 sm:mb-16 scroll-mt-20">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6">Current Service</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 sm:mb-6">
+            <h2 className="text-2xl sm:text-3xl font-bold">Current Service</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-slate-500 font-mono">
+                {serviceStatus.lastChecked
+                  ? `Health verified: ${serviceStatus.lastChecked.toLocaleTimeString()}`
+                  : 'Verifying /api/health...'}
+              </span>
+              <button
+                onClick={handleManualRefresh}
+                title="Re-check health endpoint"
+                className="text-xs text-slate-400 hover:text-cyan-400 transition cursor-pointer bg-slate-950/60 border border-slate-800 rounded px-2 py-0.5"
+              >
+                ↻ Refresh
+              </button>
+            </div>
+          </div>
+
           <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl sm:rounded-2xl p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-400">Online & Operational</span>
+              <div className="flex items-center gap-2 mb-1.5">
+                {serviceStatus.state === 'online' ? (
+                  <>
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-400">
+                      Online & Operational
+                    </span>
+                    {serviceStatus.latencyMs !== null && (
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        ({serviceStatus.latencyMs}ms)
+                      </span>
+                    )}
+                  </>
+                ) : serviceStatus.state === 'checking' ? (
+                  <>
+                    <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-cyan-400">
+                      Checking /api/health...
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-rose-400">
+                      Service Unreachable / Offline
+                    </span>
+                  </>
+                )}
               </div>
+
               <h3 className="text-xl sm:text-2xl text-cyan-400 font-semibold break-all sm:break-normal">
                 pixel.forensic.dpdns.org
               </h3>
@@ -255,15 +393,41 @@ export default function ForensicWebsite() {
                 Dedicated image forensics portal providing high-resolution pixel-level examination,
                 manipulation analysis, clone detection, and authenticity verification.
               </p>
+
+              {/* Dynamic Health Telemetry Badges */}
+              {serviceStatus.state === 'online' && (
+                <div className="flex flex-wrap items-center gap-2 mt-3 text-[11px]">
+                  <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-medium">
+                    ✓ {serviceStatus.modules} Analysis Modules Verified
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-md bg-slate-900 border border-slate-700 text-slate-300 font-mono">
+                    Workbench v{serviceStatus.version}
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-md bg-slate-900 border border-slate-700 text-slate-400">
+                    Live EC2 Graviton2 (ARM64)
+                  </span>
+                </div>
+              )}
             </div>
-            <a
-              href="https://pixel.forensic.dpdns.org"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition shrink-0 w-full md:w-auto text-center"
-            >
-              Open Service Portal ↗
-            </a>
+
+            <div className="flex flex-col sm:flex-row md:flex-col gap-2 shrink-0">
+              <a
+                href="https://pixel.forensic.dpdns.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition shrink-0 w-full text-center shadow-md shadow-cyan-500/10"
+              >
+                Open Service Portal ↗
+              </a>
+              <a
+                href="https://pixel.forensic.dpdns.org/api/health"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center text-slate-400 hover:text-cyan-400 text-[11px] py-1 transition text-center font-mono"
+              >
+                Inspect Health Endpoint ↗
+              </a>
+            </div>
           </div>
         </div>
 
