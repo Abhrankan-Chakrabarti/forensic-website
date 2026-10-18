@@ -464,53 +464,56 @@ export default function QuickAnalyzer() {
                     isDraggingSplit.current = true;
                     if (e.touches[0]) updateSplitPos(e.touches[0].clientX);
                   }}
-                  className="relative max-h-72 sm:max-h-95 md:max-h-115 w-auto overflow-hidden rounded-xl border border-slate-800 cursor-ew-resize inline-block touch-none"
+                  className="relative max-h-72 sm:max-h-95 md:max-h-115 max-w-full overflow-hidden rounded-xl border border-slate-800 cursor-ew-resize inline-block touch-none select-none"
                 >
-                  {/* Base Layer: ELA Map */}
-                  {elaResultUrl ? (
+                  {/* Base Layer: Original Image (defines natural container bounds & aspect ratio) */}
+                  <img
+                    src={imageSrc}
+                    alt="Original"
+                    className="max-h-72 sm:max-h-95 md:max-h-115 max-w-full w-auto object-contain block pointer-events-none"
+                  />
+
+                  {/* Top Layer: ELA Difference Map (clipped via clip-path to match splitPos exactly) */}
+                  {elaResultUrl && (
                     <img
                       src={elaResultUrl}
                       alt="ELA Analysis"
-                      className="max-h-72 sm:max-h-95 md:max-h-115 w-auto object-contain block pointer-events-none"
+                      className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+                      style={{
+                        clipPath: `inset(0 0 0 ${splitPos}%)`,
+                        WebkitClipPath: `inset(0 0 0 ${splitPos}%)`,
+                      }}
                     />
-                  ) : (
-                    <div className="h-48 sm:h-65 w-72 sm:w-96 flex items-center justify-center text-xs text-slate-500">
-                      Computing ELA map...
-                    </div>
                   )}
 
-                  {/* Top Layer: Original (Clipped) */}
-                  <div
-                    style={{ width: `${splitPos}%` }}
-                    className="absolute inset-y-0 left-0 overflow-hidden pointer-events-none"
-                  >
-                    <img
-                      src={imageSrc}
-                      alt="Original"
-                      className="max-h-72 sm:max-h-95 md:max-h-115 max-w-none w-auto object-contain block"
-                    />
-                  </div>
+                  {/* Computing feedback overlay badge if recalculating */}
+                  {isProcessing && (
+                    <div className="absolute top-3 right-3 bg-slate-950/90 border border-cyan-500/40 text-cyan-300 text-[10px] sm:text-xs px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1.5 z-20 pointer-events-none">
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                      <span>Computing ELA...</span>
+                    </div>
+                  )}
 
                   {/* Draggable Divider Line & Knob */}
                   <div
                     style={{ left: `${splitPos}%` }}
-                    className="absolute inset-y-0 w-0.5 bg-cyan-400 pointer-events-none"
+                    className="absolute inset-y-0 w-0.5 bg-cyan-400 pointer-events-none -translate-x-1/2 z-20"
                   >
                     {/* Floating percentage badge above divider */}
                     <div className="absolute top-3 -translate-x-1/2 bg-slate-950/90 border border-cyan-500/40 text-cyan-300 text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full shadow-lg whitespace-nowrap">
                       {Math.round(splitPos)}%
                     </div>
 
-                    <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-7 h-7 rounded-full bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-500/50 flex items-center justify-center text-xs font-bold border-2 border-slate-950 pointer-events-auto">
+                    <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-7 h-7 rounded-full bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-500/50 flex items-center justify-center text-xs font-bold border-2 border-slate-950 pointer-events-auto cursor-ew-resize">
                       ⇄
                     </div>
                   </div>
 
                   {/* Corner Badges */}
-                  <span className="absolute bottom-2.5 left-2.5 bg-slate-950/90 text-cyan-400 text-[9px] sm:text-[10px] font-mono font-semibold px-2 py-0.5 rounded border border-cyan-500/30 pointer-events-none">
+                  <span className="absolute bottom-2.5 left-2.5 bg-slate-950/90 text-cyan-400 text-[9px] sm:text-[10px] font-mono font-semibold px-2 py-0.5 rounded border border-cyan-500/30 pointer-events-none z-10">
                     ORIGINAL • {Math.round(splitPos)}%
                   </span>
-                  <span className="absolute bottom-2.5 right-2.5 bg-slate-950/90 text-slate-300 text-[9px] sm:text-[10px] font-mono font-semibold px-2 py-0.5 rounded border border-slate-700 pointer-events-none">
+                  <span className="absolute bottom-2.5 right-2.5 bg-slate-950/90 text-slate-300 text-[9px] sm:text-[10px] font-mono font-semibold px-2 py-0.5 rounded border border-slate-700 pointer-events-none z-10">
                     ELA MAP • {Math.round(100 - splitPos)}%
                   </span>
                 </div>
@@ -522,7 +525,7 @@ export default function QuickAnalyzer() {
                   <img
                     src={imageSrc}
                     alt="Original Upload"
-                    className="max-h-60 sm:max-h-80 md:max-h-95 w-auto object-contain rounded-xl border border-slate-800"
+                    className="max-h-60 sm:max-h-80 md:max-h-95 max-w-full w-auto object-contain rounded-xl border border-slate-800"
                   />
                 </div>
                 <div className="flex flex-col items-center">
@@ -531,7 +534,7 @@ export default function QuickAnalyzer() {
                     <img
                       src={elaResultUrl}
                       alt="ELA Difference Map"
-                      className="max-h-60 sm:max-h-80 md:max-h-95 w-auto object-contain rounded-xl border border-slate-800"
+                      className="max-h-60 sm:max-h-80 md:max-h-95 max-w-full w-auto object-contain rounded-xl border border-slate-800"
                     />
                   ) : (
                     <div className="h-48 sm:h-65 flex items-center justify-center text-xs text-slate-500">
@@ -545,7 +548,7 @@ export default function QuickAnalyzer() {
                 <img
                   src={imageSrc}
                   alt="Original"
-                  className="max-h-72 sm:max-h-95 md:max-h-115 w-auto object-contain rounded-xl border border-slate-800 shadow-xl"
+                  className="max-h-72 sm:max-h-95 md:max-h-115 max-w-full w-auto object-contain rounded-xl border border-slate-800 shadow-xl"
                 />
               </div>
             ) : (
@@ -554,7 +557,7 @@ export default function QuickAnalyzer() {
                   <img
                     src={elaResultUrl}
                     alt="ELA Difference Map"
-                    className="max-h-72 sm:max-h-95 md:max-h-115 w-auto object-contain rounded-xl border border-slate-800 shadow-xl"
+                    className="max-h-72 sm:max-h-95 md:max-h-115 max-w-full w-auto object-contain rounded-xl border border-slate-800 shadow-xl"
                   />
                 ) : (
                   <div className="h-48 sm:h-65 flex items-center justify-center text-xs text-slate-500">
