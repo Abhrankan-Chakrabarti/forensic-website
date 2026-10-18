@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { parseExif } from '../utils/exifParser.js';
+import Histogram from './Histogram.jsx';
 
 export default function QuickAnalyzer() {
   const [imageSrc, setImageSrc] = useState(null);
@@ -586,6 +587,9 @@ export default function QuickAnalyzer() {
               </div>
             </div>
           )}
+
+          {/* Color & Luminance Histogram */}
+          <Histogram imageSrc={imageSrc} />
 
           <div className="text-center text-xs text-slate-500">
             Need deeper pixel inspection, clone mask detection, or full report export? Use our dedicated service at{' '}

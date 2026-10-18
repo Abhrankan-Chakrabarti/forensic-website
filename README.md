@@ -82,6 +82,9 @@ A modern, high-performance web portal and landing page for the **Digital Image F
 ```text
 forensic-website/
 ├── .github/
+│   ├── ISSUE_TEMPLATE/
+│   │   ├── bug_report.md    # Standard bug report template
+│   │   └── feature_request.md # Feature request template
 │   └── workflows/
 │       └── deploy.yml       # Automated GitHub Pages CI/CD workflow
 ├── public/
@@ -90,17 +93,20 @@ forensic-website/
 │   └── icons.svg            # System iconography
 ├── src/
 │   ├── components/
-│   │   └── QuickAnalyzer.jsx # In-browser client-side ELA & metadata inspector
+│   │   ├── Histogram.jsx    # Real-time RGB and luminance distribution visualizer
+│   │   └── QuickAnalyzer.jsx # In-browser client-side ELA & split inspector
 │   ├── utils/
 │   │   └── exifParser.js    # Zero-dependency JPEG EXIF parser & software signature detector
 │   ├── App.jsx              # Main landing portal & capability matrix
 │   ├── index.css            # Global Tailwind CSS imports
 │   └── main.jsx             # React application entry point
+├── CONTRIBUTING.md          # Open-source contribution guidelines
 ├── eslint.config.js         # ESLint configuration
 ├── index.html               # HTML template with SEO & OpenGraph tags
 ├── package.json             # Project dependencies and npm scripts
 ├── vite.config.js           # Vite build configuration with relative base
 ├── LICENSE                  # MIT License
+├── SECURITY.md              # Security & zero-knowledge privacy policy
 └── README.md                # Project documentation
 ```
 
