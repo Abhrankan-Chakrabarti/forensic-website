@@ -408,9 +408,48 @@ export default function QuickAnalyzer() {
           <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 overflow-hidden flex justify-center items-center min-h-80 select-none">
             {viewMode === 'split' ? (
               <div className="w-full flex flex-col items-center">
-                <span className="text-xs text-slate-400 mb-2 font-medium">
-                  Drag the slider handle to inspect tampering variations
-                </span>
+                <div className="flex flex-wrap items-center justify-center gap-3 mb-3 text-xs">
+                  <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-3 py-1 rounded-lg">
+                    <span className="text-slate-400">Split Ratio:</span>
+                    <span className="text-cyan-400 font-semibold font-mono">{Math.round(splitPos)}%</span>
+                    <span className="text-slate-600">/</span>
+                    <span className="text-slate-300 font-semibold font-mono">{Math.round(100 - splitPos)}%</span>
+                  </div>
+
+                  <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 p-0.5 rounded-lg">
+                    <button
+                      onClick={() => setSplitPos(25)}
+                      className={`px-2 py-0.5 rounded text-[11px] transition cursor-pointer ${
+                        Math.round(splitPos) === 25
+                          ? 'bg-cyan-500 text-slate-950 font-bold'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      25%
+                    </button>
+                    <button
+                      onClick={() => setSplitPos(50)}
+                      className={`px-2 py-0.5 rounded text-[11px] transition cursor-pointer ${
+                        Math.round(splitPos) === 50
+                          ? 'bg-cyan-500 text-slate-950 font-bold'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      50% (Center)
+                    </button>
+                    <button
+                      onClick={() => setSplitPos(75)}
+                      className={`px-2 py-0.5 rounded text-[11px] transition cursor-pointer ${
+                        Math.round(splitPos) === 75
+                          ? 'bg-cyan-500 text-slate-950 font-bold'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      75%
+                    </button>
+                  </div>
+                </div>
+
                 <div
                   ref={splitContainerRef}
                   onMouseDown={handleSplitMouseDown}
@@ -450,17 +489,22 @@ export default function QuickAnalyzer() {
                     style={{ left: `${splitPos}%` }}
                     className="absolute inset-y-0 w-0.5 bg-cyan-400 pointer-events-none"
                   >
+                    {/* Floating percentage badge above divider */}
+                    <div className="absolute top-3 -translate-x-1/2 bg-slate-950/90 border border-cyan-500/40 text-cyan-300 text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full shadow-lg whitespace-nowrap">
+                      {Math.round(splitPos)}%
+                    </div>
+
                     <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-7 h-7 rounded-full bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-500/50 flex items-center justify-center text-xs font-bold border-2 border-slate-950 pointer-events-auto">
                       ⇄
                     </div>
                   </div>
 
                   {/* Corner Badges */}
-                  <span className="absolute bottom-3 left-3 bg-slate-950/80 text-cyan-400 text-[10px] font-semibold px-2 py-0.5 rounded border border-cyan-500/30 pointer-events-none">
-                    ORIGINAL
+                  <span className="absolute bottom-3 left-3 bg-slate-950/90 text-cyan-400 text-[10px] font-mono font-semibold px-2 py-0.5 rounded border border-cyan-500/30 pointer-events-none">
+                    ORIGINAL • {Math.round(splitPos)}%
                   </span>
-                  <span className="absolute bottom-3 right-3 bg-slate-950/80 text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-slate-700 pointer-events-none">
-                    ELA MAP
+                  <span className="absolute bottom-3 right-3 bg-slate-950/90 text-slate-300 text-[10px] font-mono font-semibold px-2 py-0.5 rounded border border-slate-700 pointer-events-none">
+                    ELA MAP • {Math.round(100 - splitPos)}%
                   </span>
                 </div>
               </div>
