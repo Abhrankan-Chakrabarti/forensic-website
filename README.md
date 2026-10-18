@@ -1,5 +1,6 @@
 # 🔍 Digital Image Forensics Platform
 
+[![Build and Deploy](https://github.com/Abhrankan-Chakrabarti/forensic-website/actions/workflows/deploy.yml/badge.svg)](https://github.com/Abhrankan-Chakrabarti/forensic-website/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -90,6 +91,8 @@ forensic-website/
 ├── src/
 │   ├── components/
 │   │   └── QuickAnalyzer.jsx # In-browser client-side ELA & metadata inspector
+│   ├── utils/
+│   │   └── exifParser.js    # Zero-dependency JPEG EXIF parser & software signature detector
 │   ├── App.jsx              # Main landing portal & capability matrix
 │   ├── index.css            # Global Tailwind CSS imports
 │   └── main.jsx             # React application entry point

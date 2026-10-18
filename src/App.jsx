@@ -34,6 +34,68 @@ export default function ForensicWebsite() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white selection:bg-cyan-500 selection:text-black">
+      {/* Sticky Header Navigation */}
+      <header className="sticky top-0 z-50 backdrop-blur-md bg-slate-950/80 border-b border-slate-800/80">
+        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400" />
+            <a href="#" className="font-bold tracking-tight text-lg hover:text-cyan-400 transition">
+              forensic<span className="text-cyan-400">.dpdns.org</span>
+            </a>
+          </div>
+
+          <nav className="hidden md:flex items-center gap-6 text-xs font-medium text-slate-300">
+            <button
+              onClick={() => scrollToSection('quick-analyzer')}
+              className="hover:text-cyan-400 transition cursor-pointer"
+            >
+              Quick Inspector
+            </button>
+            <button
+              onClick={() => scrollToSection('current-service')}
+              className="hover:text-cyan-400 transition cursor-pointer"
+            >
+              Services
+            </button>
+            <button
+              onClick={() => scrollToSection('capabilities')}
+              className="hover:text-cyan-400 transition cursor-pointer"
+            >
+              Capabilities
+            </button>
+            <button
+              onClick={() => scrollToSection('methodology')}
+              className="hover:text-cyan-400 transition cursor-pointer"
+            >
+              Methodology
+            </button>
+          </nav>
+
+          <div className="flex items-center gap-3">
+            <a
+              href="https://github.com/Abhrankan-Chakrabarti/forensic-website"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="View on GitHub"
+              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-850 border border-slate-800 transition text-xs flex items-center gap-1.5"
+            >
+              <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+              </svg>
+              <span className="hidden sm:inline">GitHub</span>
+            </a>
+            <a
+              href="https://pixel.forensic.dpdns.org"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-cyan-500 hover:bg-cyan-400 text-black font-semibold text-xs px-4 py-2 rounded-xl transition duration-200 shadow-sm shadow-cyan-500/20"
+            >
+              Launch Portal ↗
+            </a>
+          </div>
+        </div>
+      </header>
+
       <section className="max-w-7xl mx-auto px-6 py-16">
         {/* Hero Section */}
         <div className="text-center mb-16">
@@ -113,7 +175,7 @@ export default function ForensicWebsite() {
         <QuickAnalyzer />
 
         {/* Current Service Banner */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-8 mb-16">
+        <div id="current-service" className="bg-slate-900/80 border border-slate-800 rounded-3xl p-8 mb-16 scroll-mt-20">
           <h2 className="text-3xl font-bold mb-6">Current Service</h2>
           <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
@@ -141,7 +203,7 @@ export default function ForensicWebsite() {
         </div>
 
         {/* Platform Capabilities */}
-        <div id="capabilities" className="mb-16 scroll-mt-12">
+        <div id="capabilities" className="mb-16 scroll-mt-20">
           <h2 className="text-3xl font-bold mb-4 text-center">Platform Capabilities</h2>
           <p className="text-slate-400 text-center max-w-2xl mx-auto mb-8 text-sm">
             Advanced forensic tools and algorithmic analysis suites available across our platform network.
@@ -160,7 +222,7 @@ export default function ForensicWebsite() {
         </div>
 
         {/* Methodology & Privacy */}
-        <div className="mb-16">
+        <div id="methodology" className="mb-16 scroll-mt-20">
           <h2 className="text-3xl font-bold mb-8 text-center">Methodology & Principles</h2>
           <div className="grid md:grid-cols-3 gap-6">
             {methodology.map((item) => (

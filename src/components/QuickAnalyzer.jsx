@@ -1,17 +1,22 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { parseExif } from '../utils/exifParser.js';
 
 export default function QuickAnalyzer() {
   const [imageSrc, setImageSrc] = useState(null);
   const [elaResultUrl, setElaResultUrl] = useState(null);
   const [fileName, setFileName] = useState('');
   const [fileDetails, setFileDetails] = useState(null);
+  const [exifData, setExifData] = useState(null);
   const [elaScale, setElaScale] = useState(20);
   const [jpegQuality, setJpegQuality] = useState(0.9);
-  const [viewMode, setViewMode] = useState('ela'); // 'original', 'ela', 'side-by-side'
+  const [viewMode, setViewMode] = useState('split'); // 'split', 'side-by-side', 'ela', 'original'
+  const [splitPos, setSplitPos] = useState(50); // percentage 0 - 100
   const [isProcessing, setIsProcessing] = useState(false);
   const [dragActive, setDragActive] = useState(false);
 
   const fileInputRef = useRef(null);
+  const splitContainerRef = useRef(null);
+  const isDraggingSplit = useRef(false);
 
   // Process ELA on image change or parameter change
   const computeELA = useCallback((img, scale, quality) => {
@@ -30,7 +35,7 @@ export default function QuickAnalyzer() {
     const origData = origCtx.getImageData(0, 0, width, height);
     const data = origData.data;
     let totalLuminance = 0;
-    const sampleStep = Math.max(1, Math.floor(data.length / (4 * 5000))); // sample up to 5000 pixels
+    const sampleStep = Math.max(1, Math.floor(data.length / (4 * 5000)));
     let sampleCount = 0;
     for (let i = 0; i < data.length; i += 4 * sampleStep) {
       totalLuminance += (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
@@ -71,7 +76,6 @@ export default function QuickAnalyzer() {
 
       elaCtx.putImageData(elaImgData, 0, 0);
 
-      // Persist generated ELA output as persistent data URL
       const computedResultUrl = elaCanvas.toDataURL('image/png');
       setElaResultUrl(computedResultUrl);
 
@@ -100,11 +104,22 @@ export default function QuickAnalyzer() {
       lastModified: new Date(file.lastModified).toLocaleDateString(),
     });
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
+    // Parse EXIF
+    const arrayReader = new FileReader();
+    arrayReader.onload = (e) => {
+      if (e.target.result) {
+        const parsed = parseExif(e.target.result);
+        setExifData(parsed.hasExif ? parsed : null);
+      }
+    };
+    arrayReader.readAsArrayBuffer(file);
+
+    // Read Data URL for display
+    const dataReader = new FileReader();
+    dataReader.onload = (e) => {
       setImageSrc(e.target.result);
     };
-    reader.readAsDataURL(file);
+    dataReader.readAsDataURL(file);
   };
 
   useEffect(() => {
@@ -119,7 +134,6 @@ export default function QuickAnalyzer() {
 
   const loadSampleImage = () => {
     setElaResultUrl(null);
-    // Generate a synthetic test canvas with authentic & modified regions
     const sampleCanvas = document.createElement('canvas');
     sampleCanvas.width = 640;
     sampleCanvas.height = 400;
@@ -132,7 +146,7 @@ export default function QuickAnalyzer() {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 640, 400);
 
-    // Decorative grid pattern
+    // Grid pattern
     ctx.strokeStyle = '#334155';
     ctx.lineWidth = 1;
     for (let x = 0; x < 640; x += 40) {
@@ -148,7 +162,7 @@ export default function QuickAnalyzer() {
       ctx.stroke();
     }
 
-    // High frequency simulated tamper element (strong contrast edge)
+    // High frequency simulated tamper element
     ctx.fillStyle = '#06b6d4';
     ctx.beginPath();
     ctx.arc(320, 200, 65, 0, Math.PI * 2);
@@ -169,6 +183,16 @@ export default function QuickAnalyzer() {
       size: '42.8 KB',
       type: 'image/jpeg',
       lastModified: new Date().toLocaleDateString(),
+    });
+    setExifData({
+      hasExif: true,
+      make: 'Forensic Lab Virtual Camera',
+      model: 'Synthetic Test Rig',
+      software: 'Simulated Editing Suite v2.0',
+      dateTimeOriginal: new Date().toLocaleDateString(),
+      iso: 100,
+      fNumber: 'f/2.8',
+      exposureTime: '1/250s',
     });
     setImageSrc(dataUrl);
   };
@@ -192,6 +216,49 @@ export default function QuickAnalyzer() {
     }
   };
 
+  // Split comparison drag calculation
+  const updateSplitPos = useCallback((clientX) => {
+    if (!splitContainerRef.current) return;
+    const rect = splitContainerRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+    setSplitPos(percentage);
+  }, []);
+
+  const handleSplitMouseDown = (e) => {
+    isDraggingSplit.current = true;
+    updateSplitPos(e.clientX);
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (isDraggingSplit.current) {
+        updateSplitPos(e.clientX);
+      }
+    };
+    const handleMouseUp = () => {
+      isDraggingSplit.current = false;
+    };
+    const handleTouchMove = (e) => {
+      if (isDraggingSplit.current && e.touches[0]) {
+        updateSplitPos(e.touches[0].clientX);
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchend', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleMouseUp);
+    };
+  }, [updateSplitPos]);
+
+  const isSuspiciousSoftware = exifData?.software && /(photoshop|gimp|lightroom|canva|snapseed|pixelmator|tamper|edit)/i.test(exifData.software);
+
   return (
     <div id="quick-analyzer" className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 md:p-8 mb-16 scroll-mt-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -199,7 +266,7 @@ export default function QuickAnalyzer() {
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-xs font-semibold mb-2">
             <span>●</span> In-Browser Quick Inspector
           </div>
-          <h2 className="text-2xl md:text-3xl font-bold">Interactive Error Level Analysis (ELA)</h2>
+          <h2 className="text-2xl md:text-3xl font-bold">Interactive Error Level Analysis & EXIF</h2>
           <p className="text-slate-400 text-sm mt-1">
             Test any image instantly in your browser. Images are processed 100% locally in memory and never leave your machine.
           </p>
@@ -257,7 +324,7 @@ export default function QuickAnalyzer() {
             Drag & drop an image here or click to browse
           </p>
           <p className="text-slate-500 text-xs">
-            Supports JPEG, PNG, WebP • 100% Client-side processing
+            Supports JPEG, PNG, WebP • Auto EXIF Extraction • 100% Client-side processing
           </p>
         </div>
       ) : (
@@ -267,20 +334,12 @@ export default function QuickAnalyzer() {
             {/* View Mode Toggle */}
             <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 p-1 rounded-xl text-xs font-medium">
               <button
-                onClick={() => setViewMode('ela')}
+                onClick={() => setViewMode('split')}
                 className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
-                  viewMode === 'ela' ? 'bg-cyan-500 text-black font-semibold' : 'text-slate-400 hover:text-white'
+                  viewMode === 'split' ? 'bg-cyan-500 text-black font-semibold' : 'text-slate-400 hover:text-white'
                 }`}
               >
-                ELA Map
-              </button>
-              <button
-                onClick={() => setViewMode('original')}
-                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
-                  viewMode === 'original' ? 'bg-cyan-500 text-black font-semibold' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                Original
+                Split Slider
               </button>
               <button
                 onClick={() => setViewMode('side-by-side')}
@@ -289,6 +348,22 @@ export default function QuickAnalyzer() {
                 }`}
               >
                 Side-by-Side
+              </button>
+              <button
+                onClick={() => setViewMode('ela')}
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                  viewMode === 'ela' ? 'bg-cyan-500 text-black font-semibold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                ELA Only
+              </button>
+              <button
+                onClick={() => setViewMode('original')}
+                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                  viewMode === 'original' ? 'bg-cyan-500 text-black font-semibold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Original
               </button>
             </div>
 
@@ -328,9 +403,67 @@ export default function QuickAnalyzer() {
             )}
           </div>
 
-          {/* Image Display */}
-          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 overflow-hidden flex justify-center items-center min-h-80">
-            {viewMode === 'side-by-side' ? (
+          {/* Image Display Area */}
+          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 overflow-hidden flex justify-center items-center min-h-80 select-none">
+            {viewMode === 'split' ? (
+              <div className="w-full flex flex-col items-center">
+                <span className="text-xs text-slate-400 mb-2 font-medium">
+                  Drag the slider handle to inspect tampering variations
+                </span>
+                <div
+                  ref={splitContainerRef}
+                  onMouseDown={handleSplitMouseDown}
+                  onTouchStart={(e) => {
+                    isDraggingSplit.current = true;
+                    if (e.touches[0]) updateSplitPos(e.touches[0].clientX);
+                  }}
+                  className="relative max-h-115 w-auto overflow-hidden rounded-xl border border-slate-800 cursor-ew-resize inline-block"
+                >
+                  {/* Base Layer: ELA Map */}
+                  {elaResultUrl ? (
+                    <img
+                      src={elaResultUrl}
+                      alt="ELA Analysis"
+                      className="max-h-115 w-auto object-contain block pointer-events-none"
+                    />
+                  ) : (
+                    <div className="h-65 w-96 flex items-center justify-center text-xs text-slate-500">
+                      Computing ELA map...
+                    </div>
+                  )}
+
+                  {/* Top Layer: Original (Clipped) */}
+                  <div
+                    style={{ width: `${splitPos}%` }}
+                    className="absolute inset-y-0 left-0 overflow-hidden pointer-events-none"
+                  >
+                    <img
+                      src={imageSrc}
+                      alt="Original"
+                      className="max-h-115 max-w-none w-auto object-contain block"
+                    />
+                  </div>
+
+                  {/* Draggable Divider Line & Knob */}
+                  <div
+                    style={{ left: `${splitPos}%` }}
+                    className="absolute inset-y-0 w-0.5 bg-cyan-400 pointer-events-none"
+                  >
+                    <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-7 h-7 rounded-full bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-500/50 flex items-center justify-center text-xs font-bold border-2 border-slate-950 pointer-events-auto">
+                      ⇄
+                    </div>
+                  </div>
+
+                  {/* Corner Badges */}
+                  <span className="absolute bottom-3 left-3 bg-slate-950/80 text-cyan-400 text-[10px] font-semibold px-2 py-0.5 rounded border border-cyan-500/30 pointer-events-none">
+                    ORIGINAL
+                  </span>
+                  <span className="absolute bottom-3 right-3 bg-slate-950/80 text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-slate-700 pointer-events-none">
+                    ELA MAP
+                  </span>
+                </div>
+              </div>
+            ) : viewMode === 'side-by-side' ? (
               <div className="grid md:grid-cols-2 gap-4 w-full">
                 <div className="flex flex-col items-center">
                   <span className="text-xs text-slate-400 mb-2 font-medium">Original Image</span>
@@ -410,8 +543,52 @@ export default function QuickAnalyzer() {
             </div>
           )}
 
+          {/* EXIF Metadata & Tamper Signatures */}
+          {exifData && (
+            <div className={`rounded-2xl p-4 border text-xs ${
+              isSuspiciousSoftware
+                ? 'bg-amber-950/20 border-amber-500/40 text-amber-200'
+                : 'bg-slate-950/60 border-slate-800 text-slate-300'
+            }`}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2 font-semibold">
+                  <span>📸</span>
+                  <span>Extracted EXIF Camera & Forensic Tags</span>
+                </div>
+                {isSuspiciousSoftware && (
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold">
+                    ⚠️ Modification Signature Detected
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <span className="text-slate-500 block">Device</span>
+                  <span className="font-medium">{[exifData.make, exifData.model].filter(Boolean).join(' ') || 'Not recorded'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Software / Editor</span>
+                  <span className={`font-medium ${isSuspiciousSoftware ? 'text-amber-300 font-bold' : ''}`}>
+                    {exifData.software || 'None reported'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Capture Timestamp</span>
+                  <span className="font-medium">{exifData.dateTimeOriginal || exifData.dateTime || 'Not recorded'}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block">Optics & Exposure</span>
+                  <span className="font-medium">
+                    {[exifData.fNumber, exifData.exposureTime, exifData.iso ? `ISO ${exifData.iso}` : null].filter(Boolean).join(' • ') || 'Not recorded'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="text-center text-xs text-slate-500">
-            Need deeper pixel inspection, EXIF parsing, or full report export? Use our dedicated service at{' '}
+            Need deeper pixel inspection, clone mask detection, or full report export? Use our dedicated service at{' '}
             <a
               href="https://pixel.forensic.dpdns.org"
               target="_blank"
