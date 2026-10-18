@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 
 export default function QuickAnalyzer() {
   const [imageSrc, setImageSrc] = useState(null);
+  const [elaResultUrl, setElaResultUrl] = useState(null);
   const [fileName, setFileName] = useState('');
   const [fileDetails, setFileDetails] = useState(null);
   const [elaScale, setElaScale] = useState(20);
@@ -10,7 +11,6 @@ export default function QuickAnalyzer() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [dragActive, setDragActive] = useState(false);
 
-  const elaCanvasRef = useRef(null);
   const fileInputRef = useRef(null);
 
   // Process ELA on image change or parameter change
@@ -50,28 +50,30 @@ export default function QuickAnalyzer() {
       recompCtx.drawImage(recompressedImg, 0, 0);
       const recompData = recompCtx.getImageData(0, 0, width, height);
 
-      // Canvas 3: ELA output
-      const elaCanvas = elaCanvasRef.current;
-      if (elaCanvas) {
-        elaCanvas.width = width;
-        elaCanvas.height = height;
-        const elaCtx = elaCanvas.getContext('2d');
-        const elaImgData = elaCtx.createImageData(width, height);
-        const elaData = elaImgData.data;
+      // Canvas 3: Offscreen ELA computation
+      const elaCanvas = document.createElement('canvas');
+      elaCanvas.width = width;
+      elaCanvas.height = height;
+      const elaCtx = elaCanvas.getContext('2d');
+      const elaImgData = elaCtx.createImageData(width, height);
+      const elaData = elaImgData.data;
 
-        for (let i = 0; i < data.length; i += 4) {
-          const diffR = Math.min(255, Math.abs(data[i] - recompData.data[i]) * scale);
-          const diffG = Math.min(255, Math.abs(data[i + 1] - recompData.data[i + 1]) * scale);
-          const diffB = Math.min(255, Math.abs(data[i + 2] - recompData.data[i + 2]) * scale);
+      for (let i = 0; i < data.length; i += 4) {
+        const diffR = Math.min(255, Math.abs(data[i] - recompData.data[i]) * scale);
+        const diffG = Math.min(255, Math.abs(data[i + 1] - recompData.data[i + 1]) * scale);
+        const diffB = Math.min(255, Math.abs(data[i + 2] - recompData.data[i + 2]) * scale);
 
-          elaData[i] = diffR;
-          elaData[i + 1] = diffG;
-          elaData[i + 2] = diffB;
-          elaData[i + 3] = 255;
-        }
-
-        elaCtx.putImageData(elaImgData, 0, 0);
+        elaData[i] = diffR;
+        elaData[i + 1] = diffG;
+        elaData[i + 2] = diffB;
+        elaData[i + 3] = 255;
       }
+
+      elaCtx.putImageData(elaImgData, 0, 0);
+
+      // Persist generated ELA output as persistent data URL
+      const computedResultUrl = elaCanvas.toDataURL('image/png');
+      setElaResultUrl(computedResultUrl);
 
       setFileDetails((prev) => ({
         ...prev,
@@ -91,6 +93,7 @@ export default function QuickAnalyzer() {
     if (!file || !file.type.startsWith('image/')) return;
 
     setFileName(file.name);
+    setElaResultUrl(null);
     setFileDetails({
       size: `${(file.size / 1024).toFixed(1)} KB`,
       type: file.type,
@@ -115,6 +118,7 @@ export default function QuickAnalyzer() {
   }, [imageSrc, elaScale, jpegQuality, computeELA]);
 
   const loadSampleImage = () => {
+    setElaResultUrl(null);
     // Generate a synthetic test canvas with authentic & modified regions
     const sampleCanvas = document.createElement('canvas');
     sampleCanvas.width = 640;
@@ -201,7 +205,7 @@ export default function QuickAnalyzer() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={loadSampleImage}
             className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-medium px-4 py-2.5 rounded-xl transition cursor-pointer"
@@ -214,6 +218,15 @@ export default function QuickAnalyzer() {
           >
             Upload Image
           </button>
+          {elaResultUrl && (
+            <a
+              href={elaResultUrl}
+              download={`ela_${fileName.replace(/\.[^/.]+$/, '') || 'analysis'}.png`}
+              className="text-xs bg-slate-800 hover:bg-slate-700 border border-cyan-500/30 text-cyan-300 font-medium px-4 py-2.5 rounded-xl transition cursor-pointer"
+            >
+              Export ELA ↓
+            </a>
+          )}
           <input
             ref={fileInputRef}
             type="file"
@@ -315,8 +328,8 @@ export default function QuickAnalyzer() {
             )}
           </div>
 
-          {/* Canvas & Image Display */}
-          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 overflow-hidden flex justify-center items-center">
+          {/* Image Display */}
+          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 overflow-hidden flex justify-center items-center min-h-80">
             {viewMode === 'side-by-side' ? (
               <div className="grid md:grid-cols-2 gap-4 w-full">
                 <div className="flex flex-col items-center">
@@ -329,10 +342,17 @@ export default function QuickAnalyzer() {
                 </div>
                 <div className="flex flex-col items-center">
                   <span className="text-xs text-cyan-400 mb-2 font-medium">ELA Difference Map</span>
-                  <canvas
-                    ref={elaCanvasRef}
-                    className="max-h-95 w-auto object-contain rounded-xl border border-slate-800"
-                  />
+                  {elaResultUrl ? (
+                    <img
+                      src={elaResultUrl}
+                      alt="ELA Difference Map"
+                      className="max-h-95 w-auto object-contain rounded-xl border border-slate-800"
+                    />
+                  ) : (
+                    <div className="h-65 flex items-center justify-center text-xs text-slate-500">
+                      Computing ELA map...
+                    </div>
+                  )}
                 </div>
               </div>
             ) : viewMode === 'original' ? (
@@ -345,10 +365,17 @@ export default function QuickAnalyzer() {
               </div>
             ) : (
               <div className="flex flex-col items-center">
-                <canvas
-                  ref={elaCanvasRef}
-                  className="max-h-115 w-auto object-contain rounded-xl border border-slate-800 shadow-xl"
-                />
+                {elaResultUrl ? (
+                  <img
+                    src={elaResultUrl}
+                    alt="ELA Difference Map"
+                    className="max-h-115 w-auto object-contain rounded-xl border border-slate-800 shadow-xl"
+                  />
+                ) : (
+                  <div className="h-65 flex items-center justify-center text-xs text-slate-500">
+                    Computing ELA map...
+                  </div>
+                )}
               </div>
             )}
           </div>
