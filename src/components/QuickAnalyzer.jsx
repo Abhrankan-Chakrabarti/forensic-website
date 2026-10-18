@@ -263,28 +263,28 @@ export default function QuickAnalyzer() {
   const isSuspiciousSoftware = exifData?.software && /(photoshop|gimp|lightroom|canva|snapseed|pixelmator|tamper|edit)/i.test(exifData.software);
 
   return (
-    <div id="quick-analyzer" className="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 md:p-8 mb-16 scroll-mt-12">
+    <div id="quick-analyzer" className="bg-slate-900/90 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 mb-12 sm:mb-16 scroll-mt-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-xs font-semibold mb-2">
             <span>●</span> In-Browser Quick Inspector
           </div>
-          <h2 className="text-2xl md:text-3xl font-bold">Interactive Error Level Analysis & EXIF</h2>
-          <p className="text-slate-400 text-sm mt-1">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold">Interactive Error Level Analysis & EXIF</h2>
+          <p className="text-slate-400 text-xs sm:text-sm mt-1">
             Test any image instantly in your browser. Images are processed 100% locally in memory and never leave your machine.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full md:w-auto">
           <button
             onClick={loadSampleImage}
-            className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-medium px-4 py-2.5 rounded-xl transition cursor-pointer"
+            className="flex-1 sm:flex-initial text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-medium px-3.5 sm:px-4 py-2.5 rounded-xl transition cursor-pointer text-center"
           >
-            Load Sample Image
+            Sample Image
           </button>
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="text-xs bg-cyan-500 hover:bg-cyan-400 text-black font-semibold px-4 py-2.5 rounded-xl transition cursor-pointer shadow-md shadow-cyan-500/10"
+            className="flex-1 sm:flex-initial text-xs bg-cyan-500 hover:bg-cyan-400 text-black font-semibold px-3.5 sm:px-4 py-2.5 rounded-xl transition cursor-pointer shadow-md shadow-cyan-500/10 text-center"
           >
             Upload Image
           </button>
@@ -292,7 +292,7 @@ export default function QuickAnalyzer() {
             <a
               href={elaResultUrl}
               download={`ela_${fileName.replace(/\.[^/.]+$/, '') || 'analysis'}.png`}
-              className="text-xs bg-slate-800 hover:bg-slate-700 border border-cyan-500/30 text-cyan-300 font-medium px-4 py-2.5 rounded-xl transition cursor-pointer"
+              className="flex-1 sm:flex-initial text-xs bg-slate-800 hover:bg-slate-700 border border-cyan-500/30 text-cyan-300 font-medium px-3.5 sm:px-4 py-2.5 rounded-xl transition cursor-pointer text-center"
             >
               Export ELA ↓
             </a>
@@ -338,12 +338,12 @@ export default function QuickAnalyzer() {
       ) : (
         <div className="space-y-6">
           {/* Controls Bar */}
-          <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl sm:rounded-2xl p-3 sm:p-4 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4">
             {/* View Mode Toggle */}
-            <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 p-1 rounded-xl text-xs font-medium">
+            <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 p-1 rounded-xl text-xs font-medium overflow-x-auto w-full lg:w-auto">
               <button
                 onClick={() => setViewMode('split')}
-                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition cursor-pointer shrink-0 text-center flex-1 sm:flex-initial ${
                   viewMode === 'split' ? 'bg-cyan-500 text-black font-semibold' : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -351,7 +351,7 @@ export default function QuickAnalyzer() {
               </button>
               <button
                 onClick={() => setViewMode('side-by-side')}
-                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition cursor-pointer shrink-0 text-center flex-1 sm:flex-initial ${
                   viewMode === 'side-by-side' ? 'bg-cyan-500 text-black font-semibold' : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -359,7 +359,7 @@ export default function QuickAnalyzer() {
               </button>
               <button
                 onClick={() => setViewMode('ela')}
-                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition cursor-pointer shrink-0 text-center flex-1 sm:flex-initial ${
                   viewMode === 'ela' ? 'bg-cyan-500 text-black font-semibold' : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -367,7 +367,7 @@ export default function QuickAnalyzer() {
               </button>
               <button
                 onClick={() => setViewMode('original')}
-                className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition cursor-pointer shrink-0 text-center flex-1 sm:flex-initial ${
                   viewMode === 'original' ? 'bg-cyan-500 text-black font-semibold' : 'text-slate-400 hover:text-white'
                 }`}
               >
@@ -376,9 +376,9 @@ export default function QuickAnalyzer() {
             </div>
 
             {/* Sliders */}
-            <div className="flex flex-wrap items-center gap-6 text-xs text-slate-300">
-              <div className="flex items-center gap-3">
-                <span>Amplification: <strong>{elaScale}x</strong></span>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-6 text-xs text-slate-300 w-full lg:w-auto">
+              <div className="flex items-center justify-between sm:justify-start gap-3 bg-slate-900/40 sm:bg-transparent p-2 sm:p-0 rounded-lg">
+                <span className="shrink-0">Amplification: <strong>{elaScale}x</strong></span>
                 <input
                   type="range"
                   min="5"
@@ -386,12 +386,12 @@ export default function QuickAnalyzer() {
                   step="5"
                   value={elaScale}
                   onChange={(e) => setElaScale(Number(e.target.value))}
-                  className="w-24 accent-cyan-400 cursor-pointer"
+                  className="w-32 sm:w-24 accent-cyan-400 cursor-pointer"
                 />
               </div>
 
-              <div className="flex items-center gap-3">
-                <span>Resave Quality: <strong>{Math.round(jpegQuality * 100)}%</strong></span>
+              <div className="flex items-center justify-between sm:justify-start gap-3 bg-slate-900/40 sm:bg-transparent p-2 sm:p-0 rounded-lg">
+                <span className="shrink-0">Resave Quality: <strong>{Math.round(jpegQuality * 100)}%</strong></span>
                 <input
                   type="range"
                   min="0.70"
@@ -399,25 +399,25 @@ export default function QuickAnalyzer() {
                   step="0.05"
                   value={jpegQuality}
                   onChange={(e) => setJpegQuality(Number(e.target.value))}
-                  className="w-24 accent-cyan-400 cursor-pointer"
+                  className="w-32 sm:w-24 accent-cyan-400 cursor-pointer"
                 />
               </div>
             </div>
 
             {isProcessing && (
-              <span className="text-cyan-400 text-xs animate-pulse font-medium">
+              <span className="text-cyan-400 text-xs animate-pulse font-medium text-center">
                 Recalculating...
               </span>
             )}
           </div>
 
           {/* Image Display Area */}
-          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 overflow-hidden flex justify-center items-center min-h-80 select-none">
+          <div className="bg-slate-950/80 border border-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 overflow-hidden flex justify-center items-center min-h-60 sm:min-h-80 select-none">
             {viewMode === 'split' ? (
               <div className="w-full flex flex-col items-center">
-                <div className="flex flex-wrap items-center justify-center gap-3 mb-3 text-xs">
-                  <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-3 py-1 rounded-lg">
-                    <span className="text-slate-400">Split Ratio:</span>
+                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-3 text-xs w-full">
+                  <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-2.5 sm:px-3 py-1 rounded-lg text-center">
+                    <span className="text-slate-400">Ratio:</span>
                     <span className="text-cyan-400 font-semibold font-mono">{Math.round(splitPos)}%</span>
                     <span className="text-slate-600">/</span>
                     <span className="text-slate-300 font-semibold font-mono">{Math.round(100 - splitPos)}%</span>
@@ -442,7 +442,7 @@ export default function QuickAnalyzer() {
                           : 'text-slate-400 hover:text-white'
                       }`}
                     >
-                      50% (Center)
+                      50%
                     </button>
                     <button
                       onClick={() => setSplitPos(75)}
@@ -464,17 +464,17 @@ export default function QuickAnalyzer() {
                     isDraggingSplit.current = true;
                     if (e.touches[0]) updateSplitPos(e.touches[0].clientX);
                   }}
-                  className="relative max-h-115 w-auto overflow-hidden rounded-xl border border-slate-800 cursor-ew-resize inline-block"
+                  className="relative max-h-72 sm:max-h-95 md:max-h-115 w-auto overflow-hidden rounded-xl border border-slate-800 cursor-ew-resize inline-block touch-none"
                 >
                   {/* Base Layer: ELA Map */}
                   {elaResultUrl ? (
                     <img
                       src={elaResultUrl}
                       alt="ELA Analysis"
-                      className="max-h-115 w-auto object-contain block pointer-events-none"
+                      className="max-h-72 sm:max-h-95 md:max-h-115 w-auto object-contain block pointer-events-none"
                     />
                   ) : (
-                    <div className="h-65 w-96 flex items-center justify-center text-xs text-slate-500">
+                    <div className="h-48 sm:h-65 w-72 sm:w-96 flex items-center justify-center text-xs text-slate-500">
                       Computing ELA map...
                     </div>
                   )}
@@ -487,7 +487,7 @@ export default function QuickAnalyzer() {
                     <img
                       src={imageSrc}
                       alt="Original"
-                      className="max-h-115 max-w-none w-auto object-contain block"
+                      className="max-h-72 sm:max-h-95 md:max-h-115 max-w-none w-auto object-contain block"
                     />
                   </div>
 
@@ -507,22 +507,22 @@ export default function QuickAnalyzer() {
                   </div>
 
                   {/* Corner Badges */}
-                  <span className="absolute bottom-3 left-3 bg-slate-950/90 text-cyan-400 text-[10px] font-mono font-semibold px-2 py-0.5 rounded border border-cyan-500/30 pointer-events-none">
+                  <span className="absolute bottom-2.5 left-2.5 bg-slate-950/90 text-cyan-400 text-[9px] sm:text-[10px] font-mono font-semibold px-2 py-0.5 rounded border border-cyan-500/30 pointer-events-none">
                     ORIGINAL • {Math.round(splitPos)}%
                   </span>
-                  <span className="absolute bottom-3 right-3 bg-slate-950/90 text-slate-300 text-[10px] font-mono font-semibold px-2 py-0.5 rounded border border-slate-700 pointer-events-none">
+                  <span className="absolute bottom-2.5 right-2.5 bg-slate-950/90 text-slate-300 text-[9px] sm:text-[10px] font-mono font-semibold px-2 py-0.5 rounded border border-slate-700 pointer-events-none">
                     ELA MAP • {Math.round(100 - splitPos)}%
                   </span>
                 </div>
               </div>
             ) : viewMode === 'side-by-side' ? (
-              <div className="grid md:grid-cols-2 gap-4 w-full">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                 <div className="flex flex-col items-center">
                   <span className="text-xs text-slate-400 mb-2 font-medium">Original Image</span>
                   <img
                     src={imageSrc}
                     alt="Original Upload"
-                    className="max-h-95 w-auto object-contain rounded-xl border border-slate-800"
+                    className="max-h-60 sm:max-h-80 md:max-h-95 w-auto object-contain rounded-xl border border-slate-800"
                   />
                 </div>
                 <div className="flex flex-col items-center">
@@ -531,10 +531,10 @@ export default function QuickAnalyzer() {
                     <img
                       src={elaResultUrl}
                       alt="ELA Difference Map"
-                      className="max-h-95 w-auto object-contain rounded-xl border border-slate-800"
+                      className="max-h-60 sm:max-h-80 md:max-h-95 w-auto object-contain rounded-xl border border-slate-800"
                     />
                   ) : (
-                    <div className="h-65 flex items-center justify-center text-xs text-slate-500">
+                    <div className="h-48 sm:h-65 flex items-center justify-center text-xs text-slate-500">
                       Computing ELA map...
                     </div>
                   )}
@@ -545,7 +545,7 @@ export default function QuickAnalyzer() {
                 <img
                   src={imageSrc}
                   alt="Original"
-                  className="max-h-115 w-auto object-contain rounded-xl border border-slate-800 shadow-xl"
+                  className="max-h-72 sm:max-h-95 md:max-h-115 w-auto object-contain rounded-xl border border-slate-800 shadow-xl"
                 />
               </div>
             ) : (
@@ -554,10 +554,10 @@ export default function QuickAnalyzer() {
                   <img
                     src={elaResultUrl}
                     alt="ELA Difference Map"
-                    className="max-h-115 w-auto object-contain rounded-xl border border-slate-800 shadow-xl"
+                    className="max-h-72 sm:max-h-95 md:max-h-115 w-auto object-contain rounded-xl border border-slate-800 shadow-xl"
                   />
                 ) : (
-                  <div className="h-65 flex items-center justify-center text-xs text-slate-500">
+                  <div className="h-48 sm:h-65 flex items-center justify-center text-xs text-slate-500">
                     Computing ELA map...
                   </div>
                 )}
@@ -567,71 +567,71 @@ export default function QuickAnalyzer() {
 
           {/* Metadata Card */}
           {fileDetails && (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 text-xs">
-                <span className="text-slate-500 block mb-0.5">File Name</span>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
+              <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-2.5 sm:p-3 text-xs">
+                <span className="text-slate-500 block mb-0.5 text-[11px]">File Name</span>
                 <span className="font-semibold text-slate-200 truncate block" title={fileName}>
                   {fileName}
                 </span>
               </div>
-              <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 text-xs">
-                <span className="text-slate-500 block mb-0.5">Dimensions</span>
-                <span className="font-semibold text-slate-200">
+              <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-2.5 sm:p-3 text-xs">
+                <span className="text-slate-500 block mb-0.5 text-[11px]">Dimensions</span>
+                <span className="font-semibold text-slate-200 truncate block">
                   {fileDetails.width} × {fileDetails.height} px
                 </span>
               </div>
-              <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 text-xs">
-                <span className="text-slate-500 block mb-0.5">File Size</span>
-                <span className="font-semibold text-slate-200">{fileDetails.size}</span>
+              <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-2.5 sm:p-3 text-xs">
+                <span className="text-slate-500 block mb-0.5 text-[11px]">File Size</span>
+                <span className="font-semibold text-slate-200 block">{fileDetails.size}</span>
               </div>
-              <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 text-xs">
-                <span className="text-slate-500 block mb-0.5">Aspect Ratio</span>
-                <span className="font-semibold text-slate-200">{fileDetails.aspectRatio} : 1</span>
+              <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-2.5 sm:p-3 text-xs">
+                <span className="text-slate-500 block mb-0.5 text-[11px]">Aspect Ratio</span>
+                <span className="font-semibold text-slate-200 block">{fileDetails.aspectRatio} : 1</span>
               </div>
-              <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 text-xs col-span-2 md:col-span-1">
-                <span className="text-slate-500 block mb-0.5">Avg Luminance</span>
-                <span className="font-semibold text-cyan-400">{fileDetails.avgLuminance}</span>
+              <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-2.5 sm:p-3 text-xs col-span-2 sm:col-span-1">
+                <span className="text-slate-500 block mb-0.5 text-[11px]">Avg Luminance</span>
+                <span className="font-semibold text-cyan-400 block">{fileDetails.avgLuminance}</span>
               </div>
             </div>
           )}
 
           {/* EXIF Metadata & Tamper Signatures */}
           {exifData && (
-            <div className={`rounded-2xl p-4 border text-xs ${
+            <div className={`rounded-xl sm:rounded-2xl p-3.5 sm:p-4 border text-xs ${
               isSuspiciousSoftware
                 ? 'bg-amber-950/20 border-amber-500/40 text-amber-200'
                 : 'bg-slate-950/60 border-slate-800 text-slate-300'
             }`}>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                 <div className="flex items-center gap-2 font-semibold">
                   <span>📸</span>
                   <span>Extracted EXIF Camera & Forensic Tags</span>
                 </div>
                 {isSuspiciousSoftware && (
-                  <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold">
+                  <span className="self-start sm:self-auto px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold">
                     ⚠️ Modification Signature Detected
                   </span>
                 )}
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div>
-                  <span className="text-slate-500 block">Device</span>
-                  <span className="font-medium">{[exifData.make, exifData.model].filter(Boolean).join(' ') || 'Not recorded'}</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
+                <div className="bg-slate-900/40 sm:bg-transparent p-2 sm:p-0 rounded-lg">
+                  <span className="text-slate-500 block text-[11px]">Device</span>
+                  <span className="font-medium text-slate-200">{[exifData.make, exifData.model].filter(Boolean).join(' ') || 'Not recorded'}</span>
                 </div>
-                <div>
-                  <span className="text-slate-500 block">Software / Editor</span>
-                  <span className={`font-medium ${isSuspiciousSoftware ? 'text-amber-300 font-bold' : ''}`}>
+                <div className="bg-slate-900/40 sm:bg-transparent p-2 sm:p-0 rounded-lg">
+                  <span className="text-slate-500 block text-[11px]">Software / Editor</span>
+                  <span className={`font-medium ${isSuspiciousSoftware ? 'text-amber-300 font-bold' : 'text-slate-200'}`}>
                     {exifData.software || 'None reported'}
                   </span>
                 </div>
-                <div>
-                  <span className="text-slate-500 block">Capture Timestamp</span>
-                  <span className="font-medium">{exifData.dateTimeOriginal || exifData.dateTime || 'Not recorded'}</span>
+                <div className="bg-slate-900/40 sm:bg-transparent p-2 sm:p-0 rounded-lg">
+                  <span className="text-slate-500 block text-[11px]">Capture Timestamp</span>
+                  <span className="font-medium text-slate-200">{exifData.dateTimeOriginal || exifData.dateTime || 'Not recorded'}</span>
                 </div>
-                <div>
-                  <span className="text-slate-500 block">Optics & Exposure</span>
-                  <span className="font-medium">
+                <div className="bg-slate-900/40 sm:bg-transparent p-2 sm:p-0 rounded-lg">
+                  <span className="text-slate-500 block text-[11px]">Optics & Exposure</span>
+                  <span className="font-medium text-slate-200">
                     {[exifData.fNumber, exifData.exposureTime, exifData.iso ? `ISO ${exifData.iso}` : null].filter(Boolean).join(' • ') || 'Not recorded'}
                   </span>
                 </div>
