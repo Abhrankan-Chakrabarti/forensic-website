@@ -14,6 +14,7 @@ export default function QuickAnalyzer() {
   const [splitPos, setSplitPos] = useState(50); // percentage 0 - 100
   const [isProcessing, setIsProcessing] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [loadVersion, setLoadVersion] = useState(0);
 
   const fileInputRef = useRef(null);
   const splitContainerRef = useRef(null);
@@ -22,6 +23,7 @@ export default function QuickAnalyzer() {
   // Process ELA on image change or parameter change
   const computeELA = useCallback((img, scale, quality) => {
     setIsProcessing(true);
+    setElaResultUrl(null);
     const width = img.naturalWidth || img.width;
     const height = img.naturalHeight || img.height;
 
@@ -98,7 +100,6 @@ export default function QuickAnalyzer() {
     if (!file || !file.type.startsWith('image/')) return;
 
     setFileName(file.name);
-    setElaResultUrl(null);
     setFileDetails({
       size: `${(file.size / 1024).toFixed(1)} KB`,
       type: file.type,
@@ -119,6 +120,7 @@ export default function QuickAnalyzer() {
     const dataReader = new FileReader();
     dataReader.onload = (e) => {
       setImageSrc(e.target.result);
+      setLoadVersion((v) => v + 1);
     };
     dataReader.readAsDataURL(file);
   };
@@ -131,10 +133,9 @@ export default function QuickAnalyzer() {
       computeELA(img, elaScale, jpegQuality);
     };
     img.src = imageSrc;
-  }, [imageSrc, elaScale, jpegQuality, computeELA]);
+  }, [imageSrc, elaScale, jpegQuality, loadVersion, computeELA]);
 
   const loadSampleImage = () => {
-    setElaResultUrl(null);
     const sampleCanvas = document.createElement('canvas');
     sampleCanvas.width = 640;
     sampleCanvas.height = 400;
@@ -196,6 +197,7 @@ export default function QuickAnalyzer() {
       exposureTime: '1/250s',
     });
     setImageSrc(dataUrl);
+    setLoadVersion((v) => v + 1);
   };
 
   const handleDrag = (e) => {
@@ -300,7 +302,12 @@ export default function QuickAnalyzer() {
             type="file"
             accept="image/*"
             className="hidden"
-            onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+            onChange={(e) => {
+              if (e.target.files?.[0]) {
+                handleFile(e.target.files[0]);
+              }
+              e.target.value = '';
+            }}
           />
         </div>
       </div>
