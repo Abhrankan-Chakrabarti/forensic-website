@@ -160,6 +160,19 @@ export default function ForensicWebsite() {
           {/* Desktop & Mobile Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
             <a
+              href="https://www.linkedin.com/in/abhrankan-chakrabarti-159460214/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Abhrankan Chakrabarti LinkedIn Profile"
+              title="Built by Abhrankan Chakrabarti"
+              className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-cyan-400 hover:text-white bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-800/50 hover:border-cyan-500/60 transition text-xs flex items-center gap-1.5 font-medium shrink-0 shadow-sm"
+            >
+              <svg className="w-3.5 h-3.5 fill-current shrink-0" viewBox="0 0 24 24">
+                <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.67 1.67 0 1 0 0-3.34 1.67 1.67 0 0 0 0 3.34m1.39 9.74v-8.37H5.07v8.37h2.78z" />
+              </svg>
+              <span className="hidden sm:inline">Abhrankan Chakrabarti</span>
+            </a>
+            <a
               href="https://github.com/Abhrankan-Chakrabarti/forensic-website"
               target="_blank"
               rel="noopener noreferrer"
@@ -242,7 +255,18 @@ export default function ForensicWebsite() {
             >
               Methodology & Privacy
             </button>
-            <div className="pt-2">
+            <div className="pt-2 space-y-2">
+              <a
+                href="https://www.linkedin.com/in/abhrankan-chakrabarti-159460214/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-cyan-400 border border-slate-800 hover:border-cyan-500/50 font-medium text-xs px-4 py-2.5 rounded-xl transition"
+              >
+                <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                  <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.67 1.67 0 1 0 0-3.34 1.67 1.67 0 0 0 0 3.34m1.39 9.74v-8.37H5.07v8.37h2.78z" />
+                </svg>
+                <span>Developer: Abhrankan Chakrabarti</span>
+              </a>
               <a
                 href="https://pixel.forensic.dpdns.org"
                 target="_blank"
@@ -259,8 +283,21 @@ export default function ForensicWebsite() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-16">
         {/* Hero Section */}
         <div className="text-center mb-12 sm:mb-16">
-          <div className="inline-block px-3.5 py-1.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 mb-4 text-xs sm:text-sm font-medium">
-            forensic.dpdns.org
+          <div className="inline-flex items-center gap-2 mb-4 flex-wrap justify-center">
+            <span className="px-3.5 py-1.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-xs sm:text-sm font-medium">
+              forensic.dpdns.org
+            </span>
+            <a
+              href="https://www.linkedin.com/in/abhrankan-chakrabarti-159460214/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-1.5 rounded-full bg-slate-900 text-slate-300 hover:text-cyan-400 border border-slate-700/80 hover:border-cyan-500/40 text-xs sm:text-sm font-medium transition inline-flex items-center gap-1.5 group"
+            >
+              <span>By Abhrankan Chakrabarti</span>
+              <svg className="w-3.5 h-3.5 text-cyan-400 group-hover:scale-110 transition shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.67 1.67 0 1 0 0-3.34 1.67 1.67 0 0 0 0 3.34m1.39 9.74v-8.37H5.07v8.37h2.78z" />
+              </svg>
+            </a>
           </div>
           <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold tracking-tight mb-4 leading-tight">
             Digital Image Forensics Platform
