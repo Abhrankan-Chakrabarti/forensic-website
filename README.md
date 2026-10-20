@@ -94,7 +94,8 @@ forensic-website/
 ├── public/
 │   ├── CNAME                # Custom domain mapping (forensic.dpdns.org)
 │   ├── favicon.svg          # Platform favicon
-│   └── icons.svg            # System iconography
+│   ├── icons.svg            # System iconography
+│   └── og-preview.png       # OpenGraph & social preview banner (1200x630)
 ├── src/
 │   ├── components/
 │   │   ├── Histogram.jsx    # Real-time RGB and luminance distribution visualizer
