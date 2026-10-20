@@ -6,7 +6,11 @@
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 
-A modern, high-performance web portal and landing page for the **Digital Image Forensics Platform** (`forensic.dpdns.org`), tailored for investigators, journalists, researchers, and cybersecurity professionals performing digital media authenticity verification.
+<p align="center">
+  <img src="public/og-preview.png" alt="Digital Image Forensics Platform Preview" width="100%" />
+</p>
+
+A modern, high-performance web portal and landing page for the **Digital Image Forensics Platform** (`forensic.dpdns.org`), tailored for investigators, journalists, researchers, and cybersecurity professionals performing digital media authenticity verification. Built & developed by **Abhrankan Chakrabarti**.
 
 ---
 
@@ -109,6 +113,15 @@ forensic-website/
 ├── SECURITY.md              # Security & zero-knowledge privacy policy
 └── README.md                # Project documentation
 ```
+
+---
+
+## 👨‍💻 Author
+
+**Abhrankan Chakrabarti**
+- **LinkedIn**: [Abhrankan Chakrabarti](https://www.linkedin.com/in/abhrankan-chakrabarti-159460214/)
+- **GitHub**: [@Abhrankan-Chakrabarti](https://github.com/Abhrankan-Chakrabarti)
+- **Email**: [abhrankan@gmail.com](mailto:abhrankan@gmail.com)
 
 ---
 
