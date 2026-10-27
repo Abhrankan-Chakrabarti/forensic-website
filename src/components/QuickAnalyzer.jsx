@@ -15,6 +15,7 @@ export default function QuickAnalyzer() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [loadVersion, setLoadVersion] = useState(0);
+  const [sanitizedNotice, setSanitizedNotice] = useState(null);
 
   const fileInputRef = useRef(null);
   const splitContainerRef = useRef(null);
@@ -219,6 +220,44 @@ export default function QuickAnalyzer() {
     }
   };
 
+  // Strip all metadata & export a clean copy
+  const sanitizeAndExport = (format = 'image/jpeg') => {
+    if (!imageSrc) return;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+
+      const ext = format === 'image/png' ? 'png' : 'jpg';
+      const mime = format === 'image/png' ? 'image/png' : 'image/jpeg';
+      const quality = format === 'image/png' ? undefined : 0.95;
+
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const base = fileName.replace(/\.[^/.]+$/, '') || 'image';
+        a.href = url;
+        a.download = `${base}_sanitized.${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+
+        setSanitizedNotice({
+          format: ext.toUpperCase(),
+          size: `${(blob.size / 1024).toFixed(1)} KB`,
+        });
+        setTimeout(() => setSanitizedNotice(null), 6000);
+      }, mime, quality);
+    };
+    img.src = imageSrc;
+  };
+
   // Split comparison drag calculation
   const updateSplitPos = useCallback((clientX) => {
     if (!splitContainerRef.current) return;
@@ -297,6 +336,15 @@ export default function QuickAnalyzer() {
               Export ELA ↓
             </a>
           )}
+          {imageSrc && (
+            <button
+              onClick={() => sanitizeAndExport('image/jpeg')}
+              className="flex-1 sm:flex-initial text-xs bg-emerald-950/40 hover:bg-emerald-900/60 border border-emerald-600/50 text-emerald-300 font-medium px-3.5 sm:px-4 py-2.5 rounded-xl transition cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-sm"
+              title="Strip all EXIF, GPS, camera metadata and download a clean copy"
+            >
+              <span>🛡️ Strip EXIF</span>
+            </button>
+          )}
           <input
             ref={fileInputRef}
             type="file"
@@ -311,6 +359,23 @@ export default function QuickAnalyzer() {
           />
         </div>
       </div>
+
+      {sanitizedNotice && (
+        <div className="mb-6 p-3.5 bg-emerald-950/60 border border-emerald-500/40 rounded-xl text-xs text-emerald-200 flex items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-2">
+            <span className="text-emerald-400 font-bold text-base">✓</span>
+            <span>
+              <strong>Metadata stripped!</strong> Clean sanitized copy exported ({sanitizedNotice.format} • {sanitizedNotice.size}) with zero EXIF, GPS, camera serials, or software tags.
+            </span>
+          </div>
+          <button
+            onClick={() => setSanitizedNotice(null)}
+            className="text-emerald-400 hover:text-white px-2 py-0.5 rounded cursor-pointer font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {!imageSrc ? (
         <div
@@ -637,6 +702,26 @@ export default function QuickAnalyzer() {
                   <span className="font-medium text-slate-200">
                     {[exifData.fNumber, exifData.exposureTime, exifData.iso ? `ISO ${exifData.iso}` : null].filter(Boolean).join(' • ') || 'Not recorded'}
                   </span>
+                </div>
+              </div>
+
+              <div className="mt-3 pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <span className="text-slate-400 text-[11px] leading-relaxed">
+                  🔒 <strong>Privacy Advice:</strong> This image contains hardware/timestamp fingerprints. Strip metadata to sanitize before sharing.
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => sanitizeAndExport('image/jpeg')}
+                    className="text-[11px] bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 px-3 py-1.5 rounded-lg transition font-medium cursor-pointer"
+                  >
+                    Clean JPG ↓
+                  </button>
+                  <button
+                    onClick={() => sanitizeAndExport('image/png')}
+                    className="text-[11px] bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-slate-600 text-slate-300 px-3 py-1.5 rounded-lg transition font-medium cursor-pointer"
+                  >
+                    Clean PNG ↓
+                  </button>
                 </div>
               </div>
             </div>

@@ -78,7 +78,7 @@ export default function ForensicWebsite() {
 
   const features = [
     'Error Level Analysis (ELA)',
-    'Metadata Inspection',
+    'Metadata Inspection & Privacy Sanitizer',
     'Compression Artefact Detection',
     'Clone & Tamper Analysis',
     'Pixel-Level Investigation',
@@ -349,10 +349,9 @@ export default function ForensicWebsite() {
             <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 mb-4 font-bold text-sm">
               02
             </div>
-            <h3 className="text-cyan-400 text-lg sm:text-xl font-semibold mb-2">Metadata Inspection</h3>
+            <h3 className="text-cyan-400 text-lg sm:text-xl font-semibold mb-2">Metadata & Privacy Sanitizer</h3>
             <p className="text-slate-400 leading-relaxed text-xs sm:text-sm">
-              Review EXIF metadata, timestamps, camera profiles, color space parameters,
-              and embedded hardware properties.
+              Review EXIF tags, GPS timestamps, and camera profiles, or strip all metadata in one click to sanitize photos before publishing.
             </p>
           </div>
 
