@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { parseExif } from '../utils/exifParser.js';
 import Histogram from './Histogram.jsx';
+import DualImageComparator from './DualImageComparator.jsx';
 
 export default function QuickAnalyzer() {
+  const [activeTab, setActiveTab] = useState('single'); // 'single' (ELA/EXIF) or 'dual' (Diff Comparator)
   const [imageSrc, setImageSrc] = useState(null);
   const [elaResultUrl, setElaResultUrl] = useState(null);
   const [fileName, setFileName] = useState('');
@@ -303,7 +305,42 @@ export default function QuickAnalyzer() {
 
   return (
     <div id="quick-analyzer" className="bg-slate-900/90 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 mb-12 sm:mb-16 scroll-mt-20">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      {/* Tool Mode Tabs */}
+      <div className="flex flex-wrap items-center gap-2 mb-6 pb-5 border-b border-slate-800/80">
+        <button
+          type="button"
+          onClick={() => setActiveTab('single')}
+          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center gap-2 ${
+            activeTab === 'single'
+              ? 'bg-cyan-500 text-black shadow-md shadow-cyan-500/20'
+              : 'bg-slate-950/60 text-slate-400 hover:text-white border border-slate-800'
+          }`}
+        >
+          <span>🔬</span>
+          <span>Single-Image ELA & Metadata</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('dual')}
+          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer flex items-center gap-2 ${
+            activeTab === 'dual'
+              ? 'bg-cyan-500 text-black shadow-md shadow-cyan-500/20'
+              : 'bg-slate-950/60 text-slate-400 hover:text-white border border-slate-800'
+          }`}
+        >
+          <span>⚖️</span>
+          <span>Dual-Image Diff Comparator</span>
+          <span className="text-[10px] bg-cyan-400/20 text-cyan-300 px-1.5 py-0.5 rounded-full font-mono font-bold">
+            NEW
+          </span>
+        </button>
+      </div>
+
+      {activeTab === 'dual' ? (
+        <DualImageComparator />
+      ) : (
+        <>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-xs font-semibold mb-2">
             <span>●</span> In-Browser Quick Inspector
@@ -742,6 +779,8 @@ export default function QuickAnalyzer() {
             </a>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );
