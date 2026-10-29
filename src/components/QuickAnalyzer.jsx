@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { parseExif } from '../utils/exifParser.js';
+import { computeFileHashes } from '../utils/cryptoUtils.js';
 import Histogram from './Histogram.jsx';
 import DualImageComparator from './DualImageComparator.jsx';
 import ChannelFilterView from './ChannelFilterView.jsx';
+import ForensicReportModal from './ForensicReportModal.jsx';
 
 export default function QuickAnalyzer() {
   const [activeTab, setActiveTab] = useState('single'); // 'single' (ELA/EXIF) or 'dual' (Diff Comparator)
@@ -11,6 +13,8 @@ export default function QuickAnalyzer() {
   const [fileName, setFileName] = useState('');
   const [fileDetails, setFileDetails] = useState(null);
   const [exifData, setExifData] = useState(null);
+  const [hashes, setHashes] = useState({ sha256: null, md5: null });
+  const [isReportOpen, setIsReportOpen] = useState(false);
   const [elaScale, setElaScale] = useState(20);
   const [jpegQuality, setJpegQuality] = useState(0.9);
   const [viewMode, setViewMode] = useState('split'); // 'split', 'side-by-side', 'ela', 'original'
@@ -110,12 +114,13 @@ export default function QuickAnalyzer() {
       lastModified: new Date(file.lastModified).toLocaleDateString(),
     });
 
-    // Parse EXIF
+    // Parse EXIF & Compute Cryptographic Checksums
     const arrayReader = new FileReader();
     arrayReader.onload = (e) => {
       if (e.target.result) {
         const parsed = parseExif(e.target.result);
         setExifData(parsed.hasExif ? parsed : null);
+        computeFileHashes(e.target.result).then(setHashes);
       }
     };
     arrayReader.readAsArrayBuffer(file);
@@ -202,6 +207,11 @@ export default function QuickAnalyzer() {
     });
     setImageSrc(dataUrl);
     setLoadVersion((v) => v + 1);
+
+    fetch(dataUrl)
+      .then((res) => res.arrayBuffer())
+      .then(computeFileHashes)
+      .then(setHashes);
   };
 
   const handleDrag = (e) => {
@@ -381,6 +391,16 @@ export default function QuickAnalyzer() {
               title="Strip all EXIF, GPS, camera metadata and download a clean copy"
             >
               <span>🛡️ Strip EXIF</span>
+            </button>
+          )}
+          {imageSrc && (
+            <button
+              type="button"
+              onClick={() => setIsReportOpen(true)}
+              className="flex-1 sm:flex-initial text-xs bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/50 text-cyan-300 font-medium px-3.5 sm:px-4 py-2.5 rounded-xl transition cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-sm"
+              title="Generate printable forensic dossier with cryptographic SHA-256 and MD5 hashes"
+            >
+              <span>📑 Case Report</span>
             </button>
           )}
           <input
@@ -713,6 +733,55 @@ export default function QuickAnalyzer() {
             </div>
           )}
 
+          {/* Cryptographic Evidence Checksums */}
+          {(hashes.sha256 || hashes.md5) && (
+            <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-3 text-xs space-y-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[11px] text-slate-400">
+                <span className="font-semibold text-cyan-400 flex items-center gap-1.5">
+                  <span>🔒</span>
+                  <span>Cryptographic Evidence Integrity (Chain of Custody)</span>
+                </span>
+                <span className="text-[10px] bg-slate-900 border border-slate-700/80 px-2 py-0.5 rounded text-slate-300 font-mono self-start sm:self-auto">
+                  Hardware-Accelerated WebCrypto
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] font-mono">
+                <div className="bg-slate-900/60 border border-slate-800 p-2 rounded-lg flex items-center justify-between gap-2 overflow-hidden">
+                  <div className="truncate">
+                    <span className="text-slate-500 mr-2">SHA-256:</span>
+                    <span className="text-cyan-300 select-all">{hashes.sha256 || 'computing...'}</span>
+                  </div>
+                  {hashes.sha256 && (
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard.writeText(hashes.sha256)}
+                      className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded cursor-pointer shrink-0"
+                      title="Copy SHA-256"
+                    >
+                      Copy
+                    </button>
+                  )}
+                </div>
+                <div className="bg-slate-900/60 border border-slate-800 p-2 rounded-lg flex items-center justify-between gap-2 overflow-hidden">
+                  <div className="truncate">
+                    <span className="text-slate-500 mr-2">MD5:</span>
+                    <span className="text-slate-300 select-all">{hashes.md5 || 'computing...'}</span>
+                  </div>
+                  {hashes.md5 && (
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard.writeText(hashes.md5)}
+                      className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded cursor-pointer shrink-0"
+                      title="Copy MD5"
+                    >
+                      Copy
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* EXIF Metadata & Tamper Signatures */}
           {exifData && (
             <div className={`rounded-xl sm:rounded-2xl p-3.5 sm:p-4 border text-xs ${
@@ -795,6 +864,20 @@ export default function QuickAnalyzer() {
       )}
         </>
       )}
+
+      {/* Forensic Case Dossier Modal */}
+      <ForensicReportModal
+        isOpen={isReportOpen}
+        onClose={() => setIsReportOpen(false)}
+        fileName={fileName}
+        fileDetails={fileDetails}
+        exifData={exifData}
+        imageSrc={imageSrc}
+        elaResultUrl={elaResultUrl}
+        elaScale={elaScale}
+        jpegQuality={jpegQuality}
+        hashes={hashes}
+      />
     </div>
   );
 }

@@ -27,6 +27,8 @@ A modern, high-performance web portal and client-side forensic inspection suite 
 - ⚖️ **Dual-Image Diff Comparator**: Side-by-side and interactive split slider comparisons between an authentic reference image (Slot A) and a suspect modified copy (Slot B).
 - 🔥 **Neon Crimson Delta Heatmap**: Real-time pixel-by-pixel difference analysis with an adjustable sensitivity slider (0–100), highlighting tampered, spliced, or digitally doctored pixels in high-contrast neon crimson against a dimmed grayscale base.
 - 🎨 **Channel & Edge Filter Isolator**: Multi-wavelength spectral inspection isolating Red, Green, and Blue channels, perceived luminance, inverted negatives, and 3x3 Laplacian spatial convolution for finding sharp splice boundary seams.
+- 🔒 **Cryptographic Evidence Checksums**: Automated hardware-accelerated **SHA-256** and **MD5** hashing to verify chain of custody and media integrity without uploading evidence.
+- 📑 **Printable Forensic Case Dossier**: One-click generation of audit-ready forensic case reports complete with Case ID, evidence plates, metadata extraction, examiner findings, PDF export, and JSON audit log.
 - 🛡️ **In-Browser EXIF & Metadata Sanitizer**: One-click local metadata stripper that cleans GPS coordinates, camera serial numbers, and software signatures, exporting privacy-safe JPEG or PNG files.
 - 📊 **Real-time Color & Luminance Histogram**: Live interactive RGB and brightness frequency distribution for detecting color channel clipping or unnatural grading.
 - 📋 **Zero-Dependency EXIF Extraction**: Instant browser-side decoding of TIFF/JPEG header structures, camera make/model, timestamps, exposure parameters, and known editing software flags (Photoshop, GIMP, Canva, etc.).
@@ -104,10 +106,12 @@ forensic-website/
 │   ├── components/
 │   │   ├── ChannelFilterView.jsx   # In-browser channel isolator (RGB/Lum/Laplacian)
 │   │   ├── DualImageComparator.jsx # In-browser dual-image diff comparator & delta heatmap
+│   │   ├── ForensicReportModal.jsx # Case dossier modal with print/PDF & JSON audit export
 │   │   ├── Histogram.jsx          # Real-time RGB and luminance distribution visualizer
 │   │   └── QuickAnalyzer.jsx      # Tabbed quick inspector (Single ELA & Dual Comparator)
 │   ├── utils/
-│   │   └── exifParser.js        # Zero-dependency JPEG EXIF parser & software detector
+│   │   ├── cryptoUtils.js         # Hardware-accelerated SHA-256 and pure-JS MD5 hashing
+│   │   └── exifParser.js          # Zero-dependency JPEG EXIF parser & software detector
 │   ├── App.jsx                  # Main landing portal & capability matrix
 │   ├── index.css                # Global Tailwind CSS imports
 │   └── main.jsx                 # React application entry point
