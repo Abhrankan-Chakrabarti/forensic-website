@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { parseExif } from '../utils/exifParser.js';
 import Histogram from './Histogram.jsx';
 import DualImageComparator from './DualImageComparator.jsx';
+import ChannelFilterView from './ChannelFilterView.jsx';
 
 export default function QuickAnalyzer() {
   const [activeTab, setActiveTab] = useState('single'); // 'single' (ELA/EXIF) or 'dual' (Diff Comparator)
@@ -468,6 +469,14 @@ export default function QuickAnalyzer() {
                 ELA Only
               </button>
               <button
+                onClick={() => setViewMode('channels')}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition cursor-pointer shrink-0 text-center flex-1 sm:flex-initial ${
+                  viewMode === 'channels' ? 'bg-cyan-500 text-black font-semibold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Channels & Filters
+              </button>
+              <button
                 onClick={() => setViewMode('original')}
                 className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition cursor-pointer shrink-0 text-center flex-1 sm:flex-initial ${
                   viewMode === 'original' ? 'bg-cyan-500 text-black font-semibold' : 'text-slate-400 hover:text-white'
@@ -477,34 +486,36 @@ export default function QuickAnalyzer() {
               </button>
             </div>
 
-            {/* Sliders */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-6 text-xs text-slate-300 w-full lg:w-auto">
-              <div className="flex items-center justify-between sm:justify-start gap-3 bg-slate-900/40 sm:bg-transparent p-2 sm:p-0 rounded-lg">
-                <span className="shrink-0">Amplification: <strong>{elaScale}x</strong></span>
-                <input
-                  type="range"
-                  min="5"
-                  max="40"
-                  step="5"
-                  value={elaScale}
-                  onChange={(e) => setElaScale(Number(e.target.value))}
-                  className="w-32 sm:w-24 accent-cyan-400 cursor-pointer"
-                />
-              </div>
+            {/* Sliders (shown for ELA modes) */}
+            {viewMode !== 'channels' && (
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-6 text-xs text-slate-300 w-full lg:w-auto">
+                <div className="flex items-center justify-between sm:justify-start gap-3 bg-slate-900/40 sm:bg-transparent p-2 sm:p-0 rounded-lg">
+                  <span className="shrink-0">Amplification: <strong>{elaScale}x</strong></span>
+                  <input
+                    type="range"
+                    min="5"
+                    max="40"
+                    step="5"
+                    value={elaScale}
+                    onChange={(e) => setElaScale(Number(e.target.value))}
+                    className="w-32 sm:w-24 accent-cyan-400 cursor-pointer"
+                  />
+                </div>
 
-              <div className="flex items-center justify-between sm:justify-start gap-3 bg-slate-900/40 sm:bg-transparent p-2 sm:p-0 rounded-lg">
-                <span className="shrink-0">Resave Quality: <strong>{Math.round(jpegQuality * 100)}%</strong></span>
-                <input
-                  type="range"
-                  min="0.70"
-                  max="0.95"
-                  step="0.05"
-                  value={jpegQuality}
-                  onChange={(e) => setJpegQuality(Number(e.target.value))}
-                  className="w-32 sm:w-24 accent-cyan-400 cursor-pointer"
-                />
+                <div className="flex items-center justify-between sm:justify-start gap-3 bg-slate-900/40 sm:bg-transparent p-2 sm:p-0 rounded-lg">
+                  <span className="shrink-0">Resave Quality: <strong>{Math.round(jpegQuality * 100)}%</strong></span>
+                  <input
+                    type="range"
+                    min="0.70"
+                    max="0.95"
+                    step="0.05"
+                    value={jpegQuality}
+                    onChange={(e) => setJpegQuality(Number(e.target.value))}
+                    className="w-32 sm:w-24 accent-cyan-400 cursor-pointer"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             {isProcessing && (
               <span className="text-cyan-400 text-xs animate-pulse font-medium text-center">
@@ -645,6 +656,8 @@ export default function QuickAnalyzer() {
                   )}
                 </div>
               </div>
+            ) : viewMode === 'channels' ? (
+              <ChannelFilterView imageSrc={imageSrc} fileName={fileName} />
             ) : viewMode === 'original' ? (
               <div className="flex flex-col items-center">
                 <img

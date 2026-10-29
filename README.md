@@ -26,6 +26,7 @@ A modern, high-performance web portal and client-side forensic inspection suite 
 - 🔬 **Error Level Analysis (ELA)**: Detect differences in compression error levels across image regions to reveal digital splices, edits, and recompression traces.
 - ⚖️ **Dual-Image Diff Comparator**: Side-by-side and interactive split slider comparisons between an authentic reference image (Slot A) and a suspect modified copy (Slot B).
 - 🔥 **Neon Crimson Delta Heatmap**: Real-time pixel-by-pixel difference analysis with an adjustable sensitivity slider (0–100), highlighting tampered, spliced, or digitally doctored pixels in high-contrast neon crimson against a dimmed grayscale base.
+- 🎨 **Channel & Edge Filter Isolator**: Multi-wavelength spectral inspection isolating Red, Green, and Blue channels, perceived luminance, inverted negatives, and 3x3 Laplacian spatial convolution for finding sharp splice boundary seams.
 - 🛡️ **In-Browser EXIF & Metadata Sanitizer**: One-click local metadata stripper that cleans GPS coordinates, camera serial numbers, and software signatures, exporting privacy-safe JPEG or PNG files.
 - 📊 **Real-time Color & Luminance Histogram**: Live interactive RGB and brightness frequency distribution for detecting color channel clipping or unnatural grading.
 - 📋 **Zero-Dependency EXIF Extraction**: Instant browser-side decoding of TIFF/JPEG header structures, camera make/model, timestamps, exposure parameters, and known editing software flags (Photoshop, GIMP, Canva, etc.).
@@ -101,9 +102,10 @@ forensic-website/
 │   └── og-preview.png           # OpenGraph & social preview banner (1200x630)
 ├── src/
 │   ├── components/
+│   │   ├── ChannelFilterView.jsx   # In-browser channel isolator (RGB/Lum/Laplacian)
 │   │   ├── DualImageComparator.jsx # In-browser dual-image diff comparator & delta heatmap
-│   │   ├── Histogram.jsx        # Real-time RGB and luminance distribution visualizer
-│   │   └── QuickAnalyzer.jsx    # Tabbed quick inspector (Single ELA & Dual Comparator)
+│   │   ├── Histogram.jsx          # Real-time RGB and luminance distribution visualizer
+│   │   └── QuickAnalyzer.jsx      # Tabbed quick inspector (Single ELA & Dual Comparator)
 │   ├── utils/
 │   │   └── exifParser.js        # Zero-dependency JPEG EXIF parser & software detector
 │   ├── App.jsx                  # Main landing portal & capability matrix

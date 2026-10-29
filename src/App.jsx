@@ -78,10 +78,13 @@ export default function ForensicWebsite() {
 
   const features = [
     'Error Level Analysis (ELA)',
+    'Dual-Image Diff Comparator & Delta Heatmap',
+    'Channel & Edge Filter Isolator (RGB/Lum/Laplacian)',
     'Metadata Inspection & Privacy Sanitizer',
     'Compression Artefact Detection',
     'Clone & Tamper Analysis',
-    'Pixel-Level Investigation',
+    'Pixel-Level Investigation & Bit-Planes',
+    'Real-time Color & Luminance Histogram',
     'Forensic Report Export'
   ];
 
@@ -89,6 +92,10 @@ export default function ForensicWebsite() {
     {
       title: 'Error Level Analysis (ELA)',
       desc: 'ELA works by intentionally saving the image at a known error rate (such as 90% JPEG quality) and computing the difference against the original. Areas that have been digitally altered will display significantly different compression potentials compared to untouched regions.',
+    },
+    {
+      title: 'Visual Diffing & Channel Slicing',
+      desc: 'Comparing a suspicious copy against a known authentic reference isolates exact per-pixel alterations. Decomposing into single-wavelength channels (Red, Green, Blue) and Laplacian spatial edge filters reveals subtle boundary splices and noise inconsistencies.',
     },
     {
       title: 'Metadata & Provenance Integrity',
@@ -429,6 +436,27 @@ export default function ForensicWebsite() {
                 Dedicated image forensics portal providing high-resolution pixel-level examination,
                 manipulation analysis, clone detection, and authenticity verification.
               </p>
+              <div className="mt-2 text-xs text-slate-400 flex items-center gap-1.5 flex-wrap">
+                <span>Lead Algorithm Developer:</span>
+                <a
+                  href="https://www.linkedin.com/in/omeshwar-bawane-b39165383"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-cyan-400 hover:underline font-medium"
+                >
+                  Omeshwar Bawane ↗
+                </a>
+                <span className="text-slate-600">•</span>
+                <span>Infrastructure & Deployment:</span>
+                <a
+                  href="https://www.linkedin.com/in/abhrankan-chakrabarti-159460214/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-cyan-400 hover:underline font-medium"
+                >
+                  Abhrankan Chakrabarti ↗
+                </a>
+              </div>
 
               {/* Dynamic Health Telemetry Badges */}
               {serviceStatus.state === 'online' && (
@@ -505,7 +533,7 @@ export default function ForensicWebsite() {
         {/* Footer */}
         <footer className="text-center text-slate-500 border-t border-slate-800/80 pt-6 sm:pt-8 text-xs sm:text-sm space-y-2">
           <div className="flex items-center justify-center gap-2 flex-wrap">
-            <span>Built & Developed by</span>
+            <span>Portal & Infrastructure by</span>
             <a
               href="https://www.linkedin.com/in/abhrankan-chakrabarti-159460214/"
               target="_blank"
@@ -513,6 +541,19 @@ export default function ForensicWebsite() {
               className="text-cyan-400 hover:text-cyan-300 font-medium inline-flex items-center gap-1 transition"
             >
               Abhrankan Chakrabarti
+              <svg className="w-3.5 h-3.5 inline-block" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.67 1.67 0 1 0 0-3.34 1.67 1.67 0 0 0 0 3.34m1.39 9.74v-8.37H5.07v8.37h2.78z" />
+              </svg>
+            </a>
+            <span className="text-slate-600">•</span>
+            <span>Pixel Workbench by</span>
+            <a
+              href="https://www.linkedin.com/in/omeshwar-bawane-b39165383"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-cyan-400 hover:text-cyan-300 font-medium inline-flex items-center gap-1 transition"
+            >
+              Omeshwar Bawane
               <svg className="w-3.5 h-3.5 inline-block" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.67 1.67 0 1 0 0-3.34 1.67 1.67 0 0 0 0 3.34m1.39 9.74v-8.37H5.07v8.37h2.78z" />
               </svg>
