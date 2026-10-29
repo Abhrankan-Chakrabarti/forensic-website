@@ -7,17 +7,20 @@ const FILTER_DESCRIPTIONS = {
   lum: 'Luminance (Grayscale): Isolates perceived brightness (0.299R + 0.587G + 0.114B). Strips chromatic distraction to expose lighting direction and gradient mismatches.',
   invert: 'Inverted (Negative): Inverts all color values. Useful for spotting faint watermarks, hidden text artifacts, and subtle gradient shifts in deep shadows or bright highlights.',
   edges: 'High-Pass Edge Seams: Computes a 3x3 Laplacian spatial convolution. Highlights sharp boundary discontinuities, pasted borders, and copy-move splice seams.',
+  bitplanes: 'Bit-Plane Slicer & Steganalysis: Decomposes pixels into individual binary bit-planes (Bit 0 to Bit 7). Unedited natural images show pure sensor noise at Bit 0; structured patterns or text indicate LSB steganographic payloads or digital tampering.',
 };
 
 export default function ChannelFilterView({ imageSrc, fileName = 'image' }) {
   const [activeFilter, setActiveFilter] = useState('blue');
   const [monochromeChannels, setMonochromeChannels] = useState(true);
   const [edgeBoost, setEdgeBoost] = useState(2);
+  const [selectedBitPlane, setSelectedBitPlane] = useState(0); // 0 (LSB) to 7 (MSB) or 'combined'
+  const [bitTargetChannel, setBitTargetChannel] = useState('lum'); // 'lum', 'red', 'green', 'blue'
   const [resultUrl, setResultUrl] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const monoToggleId = useId();
 
-  const applyFilter = useCallback((src, filter, mono, boost) => {
+  const applyFilter = useCallback((src, filter, mono, boost, bitPlane, bitChan) => {
     if (!src) return;
     setIsProcessing(true);
 
@@ -61,6 +64,34 @@ export default function ChannelFilterView({ imageSrc, fileName = 'image' }) {
             outData[outIdx + 2] = clamped;
             outData[outIdx + 3] = 255;
           }
+        }
+      } else if (filter === 'bitplanes') {
+        // Binary Bit-Plane Slicer & LSB Steganalysis
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+
+          let val;
+          if (bitChan === 'red') val = r;
+          else if (bitChan === 'green') val = g;
+          else if (bitChan === 'blue') val = b;
+          else val = Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+
+          let bitOut;
+          if (bitPlane === 'combined') {
+            // Amplify lowest 3 bits (0b000 - 0b111) to fill 0-255 dynamic range
+            bitOut = (val & 0b111) * 36;
+          } else {
+            // Single bit extraction (0 to 7)
+            const bit = (val >> Number(bitPlane)) & 1;
+            bitOut = bit ? 255 : 0;
+          }
+
+          outData[i] = bitOut;
+          outData[i + 1] = bitOut;
+          outData[i + 2] = bitOut;
+          outData[i + 3] = 255;
         }
       } else {
         for (let i = 0; i < data.length; i += 4) {
@@ -133,14 +164,18 @@ export default function ChannelFilterView({ imageSrc, fileName = 'image' }) {
   useEffect(() => {
     if (!imageSrc) return;
     const timer = setTimeout(() => {
-      applyFilter(imageSrc, activeFilter, monochromeChannels, edgeBoost);
+      applyFilter(imageSrc, activeFilter, monochromeChannels, edgeBoost, selectedBitPlane, bitTargetChannel);
     }, 0);
     return () => clearTimeout(timer);
-  }, [imageSrc, activeFilter, monochromeChannels, edgeBoost, applyFilter]);
+  }, [imageSrc, activeFilter, monochromeChannels, edgeBoost, selectedBitPlane, bitTargetChannel, applyFilter]);
+
+  const exportFilename = activeFilter === 'bitplanes'
+    ? `${fileName.replace(/\.[^/.]+$/, '')}_bitplane_${selectedBitPlane}_${bitTargetChannel}.png`
+    : `${fileName.replace(/\.[^/.]+$/, '')}_${activeFilter}.png`;
 
   return (
     <div className="w-full flex flex-col items-center gap-4">
-      {/* Filter Selector Bar */}
+      {/* Primary Filter Selector Bar */}
       <div className="w-full flex flex-wrap items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 p-2.5 sm:p-3 rounded-xl">
         <div className="flex flex-wrap items-center gap-1.5 text-xs">
           <button
@@ -209,6 +244,20 @@ export default function ChannelFilterView({ imageSrc, fileName = 'image' }) {
           >
             Edge Seams
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveFilter('bitplanes')}
+            className={`px-3 py-1.5 rounded-lg font-medium transition cursor-pointer flex items-center gap-1.5 ${
+              activeFilter === 'bitplanes'
+                ? 'bg-purple-500 text-white font-semibold shadow-sm shadow-purple-500/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <span>Bit Planes (LSB)</span>
+            <span className="text-[10px] bg-purple-400/20 text-purple-200 px-1.5 py-0.2 rounded-full font-bold">
+              8-Bit
+            </span>
+          </button>
         </div>
 
         {/* Dynamic Controls based on filter */}
@@ -244,7 +293,7 @@ export default function ChannelFilterView({ imageSrc, fileName = 'image' }) {
           {resultUrl && (
             <a
               href={resultUrl}
-              download={`${fileName.replace(/\.[^/.]+$/, '')}_${activeFilter}.png`}
+              download={exportFilename}
               className="text-[11px] bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-300 px-3 py-1 rounded-lg transition"
             >
               Export Filter ↓
@@ -253,10 +302,100 @@ export default function ChannelFilterView({ imageSrc, fileName = 'image' }) {
         </div>
       </div>
 
+      {/* Bit-Plane Specialized Secondary Control Bar */}
+      {activeFilter === 'bitplanes' && (
+        <div className="w-full bg-slate-950/70 border border-purple-500/30 rounded-xl p-3 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+          {/* Bit-Plane Selector */}
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="text-slate-400 font-mono text-[11px] mr-1">Plane:</span>
+            {[0, 1, 2, 3, 4, 5, 6, 7].map((b) => (
+              <button
+                key={b}
+                type="button"
+                onClick={() => setSelectedBitPlane(b)}
+                className={`px-2.5 py-1 rounded-md font-mono text-xs transition cursor-pointer ${
+                  selectedBitPlane === b
+                    ? 'bg-purple-500 text-white font-bold shadow-sm shadow-purple-500/40'
+                    : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                }`}
+                title={b === 0 ? 'Bit 0: Least Significant Bit (LSB) - Steganography Layer' : b === 7 ? 'Bit 7: Most Significant Bit (MSB)' : `Bit ${b}`}
+              >
+                {b === 0 ? 'Bit 0 (LSB)' : b === 7 ? 'Bit 7 (MSB)' : `Bit ${b}`}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setSelectedBitPlane('combined')}
+              className={`px-2.5 py-1 rounded-md font-mono text-xs transition cursor-pointer ${
+                selectedBitPlane === 'combined'
+                  ? 'bg-purple-500 text-white font-bold shadow-sm shadow-purple-500/40'
+                  : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+              }`}
+              title="Combined Bits 0-2 amplified"
+            >
+              Combined LSBs (0-2)
+            </button>
+          </div>
+
+          {/* Target Channel for Bit Slicing */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-slate-400 font-mono text-[11px] mr-1">Target:</span>
+            <div className="inline-flex bg-slate-900 border border-slate-800 p-0.5 rounded-lg text-[11px]">
+              <button
+                type="button"
+                onClick={() => setBitTargetChannel('lum')}
+                className={`px-2 py-0.5 rounded cursor-pointer transition ${
+                  bitTargetChannel === 'lum' ? 'bg-purple-500/30 text-purple-200 font-semibold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Grayscale
+              </button>
+              <button
+                type="button"
+                onClick={() => setBitTargetChannel('red')}
+                className={`px-2 py-0.5 rounded cursor-pointer transition ${
+                  bitTargetChannel === 'red' ? 'bg-rose-500/30 text-rose-200 font-semibold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Red
+              </button>
+              <button
+                type="button"
+                onClick={() => setBitTargetChannel('green')}
+                className={`px-2 py-0.5 rounded cursor-pointer transition ${
+                  bitTargetChannel === 'green' ? 'bg-emerald-500/30 text-emerald-200 font-semibold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Green
+              </button>
+              <button
+                type="button"
+                onClick={() => setBitTargetChannel('blue')}
+                className={`px-2 py-0.5 rounded cursor-pointer transition ${
+                  bitTargetChannel === 'blue' ? 'bg-blue-500/30 text-blue-200 font-semibold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Blue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Description Context Pill */}
       <div className="w-full text-xs text-slate-400 bg-slate-950/60 border border-slate-800/80 px-3.5 py-2 rounded-xl flex items-center gap-2">
         <span className="text-cyan-400 text-sm">💡</span>
-        <span>{FILTER_DESCRIPTIONS[activeFilter]}</span>
+        <span>
+          {activeFilter === 'bitplanes'
+            ? selectedBitPlane === 0
+              ? 'Bit 0 (Least Significant Bit): In an unedited camera capture, Bit 0 resembles pure sensor noise (50% random entropy). Structured shapes, text, or solid patches here indicate LSB steganographic payloads or digital tampering.'
+              : selectedBitPlane === 7
+              ? 'Bit 7 (Most Significant Bit): Contains ~50% of the image\'s gross visual contours and luminance data.'
+              : selectedBitPlane === 'combined'
+              ? 'Combined LSBs 0–2 (Amplified Noise Profile): Stretches the lowest 3 bits across the 8-bit dynamic range, highlighting concealed watermarks or payload boundaries.'
+              : `Bit ${selectedBitPlane}: Mid-level bit-plane decomposing textural and gradual gradient transitions.`
+            : FILTER_DESCRIPTIONS[activeFilter]}
+        </span>
       </div>
 
       {/* Image Display */}

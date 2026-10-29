@@ -27,6 +27,7 @@ A modern, high-performance web portal and client-side forensic inspection suite 
 - ⚖️ **Dual-Image Diff Comparator**: Side-by-side and interactive split slider comparisons between an authentic reference image (Slot A) and a suspect modified copy (Slot B).
 - 🔥 **Neon Crimson Delta Heatmap**: Real-time pixel-by-pixel difference analysis with an adjustable sensitivity slider (0–100), highlighting tampered, spliced, or digitally doctored pixels in high-contrast neon crimson against a dimmed grayscale base.
 - 🎨 **Channel & Edge Filter Isolator**: Multi-wavelength spectral inspection isolating Red, Green, and Blue channels, perceived luminance, inverted negatives, and 3x3 Laplacian spatial convolution for finding sharp splice boundary seams.
+- 🧬 **Bit-Plane Slicer & LSB Steganalysis**: Full 8-bit binary plane decomposition (Bit 0 LSB to Bit 7 MSB) and combined lowest-3-bit amplification across Grayscale, Red, Green, and Blue channels to detect concealed payloads, steganographic watermarks, and entropy anomalies.
 - 🔒 **Cryptographic Evidence Checksums**: Automated hardware-accelerated **SHA-256** and **MD5** hashing to verify chain of custody and media integrity without uploading evidence.
 - 📑 **Printable Forensic Case Dossier**: One-click generation of audit-ready forensic case reports complete with Case ID, evidence plates, metadata extraction, examiner findings, PDF export, and JSON audit log.
 - 🛡️ **In-Browser EXIF & Metadata Sanitizer**: One-click local metadata stripper that cleans GPS coordinates, camera serial numbers, and software signatures, exporting privacy-safe JPEG or PNG files.
@@ -104,7 +105,7 @@ forensic-website/
 │   └── og-preview.png           # OpenGraph & social preview banner (1200x630)
 ├── src/
 │   ├── components/
-│   │   ├── ChannelFilterView.jsx   # In-browser channel isolator (RGB/Lum/Laplacian)
+│   │   ├── ChannelFilterView.jsx   # In-browser channel isolator & 8-bit plane steganalysis (RGB/Lum/Laplacian/LSB)
 │   │   ├── DualImageComparator.jsx # In-browser dual-image diff comparator & delta heatmap
 │   │   ├── ForensicReportModal.jsx # Case dossier modal with print/PDF & JSON audit export
 │   │   ├── Histogram.jsx          # Real-time RGB and luminance distribution visualizer
