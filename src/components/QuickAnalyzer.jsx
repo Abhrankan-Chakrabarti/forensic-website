@@ -15,6 +15,8 @@ export default function QuickAnalyzer() {
   const [exifData, setExifData] = useState(null);
   const [hashes, setHashes] = useState({ sha256: null, md5: null });
   const [isReportOpen, setIsReportOpen] = useState(false);
+  const [sampleDropdownOpen, setSampleDropdownOpen] = useState(false);
+  const [pasteNotice, setPasteNotice] = useState(null);
   const [elaScale, setElaScale] = useState(20);
   const [jpegQuality, setJpegQuality] = useState(0.9);
   const [viewMode, setViewMode] = useState('split'); // 'split', 'side-by-side', 'ela', 'original'
@@ -26,6 +28,7 @@ export default function QuickAnalyzer() {
 
   const fileInputRef = useRef(null);
   const splitContainerRef = useRef(null);
+  const sampleDropdownRef = useRef(null);
   const isDraggingSplit = useRef(false);
 
   // Process ELA on image change or parameter change
@@ -144,20 +147,171 @@ export default function QuickAnalyzer() {
     img.src = imageSrc;
   }, [imageSrc, elaScale, jpegQuality, loadVersion, computeELA]);
 
-  const loadSampleImage = () => {
-    const sampleCanvas = document.createElement('canvas');
-    sampleCanvas.width = 640;
-    sampleCanvas.height = 400;
-    const ctx = sampleCanvas.getContext('2d');
+  // Global clipboard paste listener (Ctrl+V)
+  useEffect(() => {
+    const handlePaste = (e) => {
+      const activeTag = document.activeElement?.tagName?.toLowerCase();
+      if (activeTag === 'input' || activeTag === 'textarea') return;
 
-    // Base background gradient
+      if (!e.clipboardData || !e.clipboardData.items) return;
+
+      const items = e.clipboardData.items;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith('image/')) {
+          const file = items[i].getAsFile();
+          if (file) {
+            const timestamp = new Date().toISOString().slice(11, 19).replace(/:/g, '');
+            const pastedFile = new File([file], `clipboard_capture_${timestamp}.png`, {
+              type: file.type || 'image/png',
+            });
+            handleFile(pastedFile);
+            setPasteNotice(`Captured from clipboard (${(file.size / 1024).toFixed(1)} KB)`);
+            setTimeout(() => setPasteNotice(null), 4500);
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, []);
+
+  // Click outside to close sample dropdown
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (sampleDropdownRef.current && !sampleDropdownRef.current.contains(e.target)) {
+        setSampleDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const loadSampleCase = (caseType = 'spliced') => {
+    setSampleDropdownOpen(false);
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 400;
+    const ctx = canvas.getContext('2d');
+
+    if (caseType === 'stego') {
+      // Background gradient
+      const grad = ctx.createLinearGradient(0, 0, 640, 400);
+      grad.addColorStop(0, '#0284c7');
+      grad.addColorStop(0.5, '#0f172a');
+      grad.addColorStop(1, '#020617');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 640, 400);
+
+      // Central forensic graphic
+      const radial = ctx.createRadialGradient(320, 200, 20, 320, 200, 140);
+      radial.addColorStop(0, '#38bdf8');
+      radial.addColorStop(0.8, '#0369a1');
+      radial.addColorStop(1, '#0c4a6e');
+      ctx.fillStyle = radial;
+      ctx.beginPath();
+      ctx.arc(320, 200, 120, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Offscreen binary secret payload mask
+      const maskCanvas = document.createElement('canvas');
+      maskCanvas.width = 640;
+      maskCanvas.height = 400;
+      const maskCtx = maskCanvas.getContext('2d');
+      maskCtx.fillStyle = '#000000';
+      maskCtx.fillRect(0, 0, 640, 400);
+      maskCtx.fillStyle = '#ffffff';
+      maskCtx.font = 'bold 24px monospace';
+      maskCtx.textAlign = 'center';
+      maskCtx.fillText('★ CLASSIFIED FORENSIC INTEL ★', 320, 160);
+      maskCtx.font = 'bold 18px monospace';
+      maskCtx.fillText('LSB STEGANOGRAPHY INJECTION', 320, 200);
+      maskCtx.font = '13px monospace';
+      maskCtx.fillText('CONFIDENTIAL BIT-0 PAYLOAD VERIFIED', 320, 235);
+
+      const maskData = maskCtx.getImageData(0, 0, 640, 400).data;
+      const imgData = ctx.getImageData(0, 0, 640, 400);
+      const d = imgData.data;
+
+      // Embed binary mask into Bit 0 of Blue channel
+      for (let i = 0; i < d.length; i += 4) {
+        const isSecret = maskData[i] > 128 ? 1 : 0;
+        d[i + 2] = (d[i + 2] & ~1) | isSecret;
+        if (!isSecret && (i % 7 === 0 || i % 13 === 0)) {
+          d[i + 2] = d[i + 2] ^ 1;
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+
+      const dataUrl = canvas.toDataURL('image/png');
+      setFileName('stego_payload_sample.png');
+      setFileDetails({
+        size: '78.4 KB',
+        type: 'image/png',
+        lastModified: new Date().toLocaleDateString(),
+      });
+      setExifData({
+        hasExif: false,
+      });
+      setImageSrc(dataUrl);
+      setLoadVersion((v) => v + 1);
+
+      fetch(dataUrl)
+        .then((res) => res.arrayBuffer())
+        .then(computeFileHashes)
+        .then(setHashes);
+
+      setViewMode('channels');
+      return;
+    }
+
+    if (caseType === 'exif_spoof') {
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(0, 0, 640, 400);
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 22px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('METADATA PROVENANCE SAMPLE', 320, 180);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '14px monospace';
+      ctx.fillText('Simulated Editing Suite & GPS Geotag', 320, 220);
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      setFileName('exif_tamper_evidence.jpg');
+      setFileDetails({
+        size: '56.2 KB',
+        type: 'image/jpeg',
+        lastModified: new Date().toLocaleDateString(),
+      });
+      setExifData({
+        hasExif: true,
+        make: 'Nikon',
+        model: 'D850',
+        software: 'Adobe Photoshop 2026 (Macintosh)',
+        dateTime: '2026:10:28 14:15:22',
+        dateTimeOriginal: '2021:03:15 09:30:00',
+        iso: 200,
+        fNumber: 'f/2.8',
+        exposureTime: '1/1000s',
+      });
+      setImageSrc(dataUrl);
+      setLoadVersion((v) => v + 1);
+
+      fetch(dataUrl)
+        .then((res) => res.arrayBuffer())
+        .then(computeFileHashes)
+        .then(setHashes);
+      return;
+    }
+
+    // Default: Spliced Document & ELA Tamper
     const grad = ctx.createLinearGradient(0, 0, 640, 400);
     grad.addColorStop(0, '#0f172a');
     grad.addColorStop(1, '#1e293b');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 640, 400);
 
-    // Grid pattern
     ctx.strokeStyle = '#334155';
     ctx.lineWidth = 1;
     for (let x = 0; x < 640; x += 40) {
@@ -173,37 +327,41 @@ export default function QuickAnalyzer() {
       ctx.stroke();
     }
 
-    // High frequency simulated tamper element
-    ctx.fillStyle = '#06b6d4';
-    ctx.beginPath();
-    ctx.arc(320, 200, 65, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 20px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('FORENSIC SAMPLE', 320, 205);
-
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = 'bold 20px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('OFFICIAL CLEARANCE RECORD', 40, 60);
     ctx.fillStyle = '#94a3b8';
     ctx.font = '14px monospace';
-    ctx.fillText('ELA Verification Test', 320, 230);
+    ctx.fillText('ACCOUNT: 4920-8812-7491', 40, 100);
+    ctx.fillText('DATE ISSUED: 2026-10-15', 40, 130);
+    ctx.fillText('AUTHORIZED LIMIT: $5,000 USD', 40, 160);
 
-    const dataUrl = sampleCanvas.toDataURL('image/jpeg', 0.92);
-    setFileName('sample_verification.jpg');
+    ctx.fillStyle = '#06b6d4';
+    ctx.fillRect(320, 220, 280, 120);
+    ctx.fillStyle = '#020617';
+    ctx.font = 'bold 22px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('SPLICED: $750,000', 460, 275);
+    ctx.font = '12px monospace';
+    ctx.fillText('[HIGH ELA DISPARITY]', 460, 305);
+
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+    setFileName('spliced_record_sample.jpg');
     setFileDetails({
-      size: '42.8 KB',
+      size: '64.1 KB',
       type: 'image/jpeg',
       lastModified: new Date().toLocaleDateString(),
     });
     setExifData({
       hasExif: true,
       make: 'Forensic Lab Virtual Camera',
-      model: 'Synthetic Test Rig',
-      software: 'Simulated Editing Suite v2.0',
+      model: 'Synthetic Document Scanner',
+      software: 'GIMP 2.10 (Tampered)',
       dateTimeOriginal: new Date().toLocaleDateString(),
       iso: 100,
-      fNumber: 'f/2.8',
-      exposureTime: '1/250s',
+      fNumber: 'f/4.0',
+      exposureTime: '1/125s',
     });
     setImageSrc(dataUrl);
     setLoadVersion((v) => v + 1);
@@ -363,12 +521,63 @@ export default function QuickAnalyzer() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full md:w-auto">
-          <button
-            onClick={loadSampleImage}
-            className="flex-1 sm:flex-initial text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-medium px-3.5 sm:px-4 py-2.5 rounded-xl transition cursor-pointer text-center"
-          >
-            Sample Image
-          </button>
+          {/* Sample Cases Dropdown */}
+          <div className="relative flex-1 sm:flex-initial" ref={sampleDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setSampleDropdownOpen(!sampleDropdownOpen)}
+              className="w-full text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-medium px-3.5 sm:px-4 py-2.5 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <span>◈ Sample Cases</span>
+              <span className="text-[10px] text-slate-400">▾</span>
+            </button>
+
+            {sampleDropdownOpen && (
+              <div className="absolute left-0 sm:right-0 sm:left-auto mt-2 w-72 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-1.5 z-30 space-y-1">
+                <button
+                  type="button"
+                  onClick={() => loadSampleCase('spliced')}
+                  className="w-full text-left p-2 rounded-lg hover:bg-slate-800 transition cursor-pointer text-xs group"
+                >
+                  <div className="font-semibold text-cyan-400 flex items-center justify-between">
+                    <span>🔬 Spliced Document & ELA</span>
+                    <span className="text-[10px] text-slate-500 font-mono">ELA / Edges</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Financial record with tampered amount and recompression disparity.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => loadSampleCase('stego')}
+                  className="w-full text-left p-2 rounded-lg hover:bg-slate-800 transition cursor-pointer text-xs group"
+                >
+                  <div className="font-semibold text-purple-400 flex items-center justify-between">
+                    <span>🧬 LSB Steganography Payload</span>
+                    <span className="text-[10px] text-purple-300/80 font-mono">Bit 0 LSB</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Image containing hidden binary watermark encoded into Bit 0.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => loadSampleCase('exif_spoof')}
+                  className="w-full text-left p-2 rounded-lg hover:bg-slate-800 transition cursor-pointer text-xs group"
+                >
+                  <div className="font-semibold text-amber-400 flex items-center justify-between">
+                    <span>📸 Metadata Spoof & Photoshop</span>
+                    <span className="text-[10px] text-amber-300/80 font-mono">EXIF</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Photo with Photoshop editing suite trace and timestamp anomalies.
+                  </p>
+                </button>
+              </div>
+            )}
+          </div>
           <button
             onClick={() => fileInputRef.current?.click()}
             className="flex-1 sm:flex-initial text-xs bg-cyan-500 hover:bg-cyan-400 text-black font-semibold px-3.5 sm:px-4 py-2.5 rounded-xl transition cursor-pointer shadow-md shadow-cyan-500/10 text-center"
@@ -418,6 +627,23 @@ export default function QuickAnalyzer() {
         </div>
       </div>
 
+      {pasteNotice && (
+        <div className="mb-6 p-3.5 bg-cyan-950/70 border border-cyan-500/50 rounded-xl text-xs text-cyan-200 flex items-center justify-between gap-3 shadow-lg">
+          <div className="flex items-center gap-2">
+            <span className="text-cyan-400 font-bold text-base">📋</span>
+            <span>
+              <strong>Clipboard Capture Loaded!</strong> {pasteNotice}. Cryptographic hashes generated and analysis ready.
+            </span>
+          </div>
+          <button
+            onClick={() => setPasteNotice(null)}
+            className="text-cyan-400 hover:text-white px-2 py-0.5 rounded cursor-pointer font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {sanitizedNotice && (
         <div className="mb-6 p-3.5 bg-emerald-950/60 border border-emerald-500/40 rounded-xl text-xs text-emerald-200 flex items-center justify-between gap-3 shadow-lg">
           <div className="flex items-center gap-2">
@@ -442,7 +668,7 @@ export default function QuickAnalyzer() {
           onDragOver={handleDrag}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-12 text-center transition cursor-pointer flex flex-col items-center justify-center min-h-65 ${
+          className={`border-2 border-dashed rounded-2xl p-10 sm:p-12 text-center transition cursor-pointer flex flex-col items-center justify-center min-h-65 ${
             dragActive
               ? 'border-cyan-400 bg-cyan-950/20'
               : 'border-slate-800 hover:border-slate-700 bg-slate-950/40'
@@ -454,7 +680,11 @@ export default function QuickAnalyzer() {
           <p className="text-slate-200 font-semibold mb-1">
             Drag & drop an image here or click to browse
           </p>
-          <p className="text-slate-500 text-xs">
+          <div className="inline-flex items-center gap-1.5 my-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-[11px] font-mono">
+            <span>📋</span>
+            <span>Tip: Press <strong>Ctrl + V</strong> anywhere to paste screenshots</span>
+          </div>
+          <p className="text-slate-500 text-xs mt-1">
             Supports JPEG, PNG, WebP • Auto EXIF Extraction • 100% Client-side processing
           </p>
         </div>

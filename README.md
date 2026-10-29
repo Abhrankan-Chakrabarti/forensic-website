@@ -24,6 +24,8 @@ A modern, high-performance web portal and client-side forensic inspection suite 
 ## ✨ Features & Capabilities
 
 - 🔬 **Error Level Analysis (ELA)**: Detect differences in compression error levels across image regions to reveal digital splices, edits, and recompression traces.
+- 📋 **Direct Clipboard Ingestion (`Ctrl + V`)**: Instant triage of captured screenshots (`Win + Shift + S`) or copied web media without manual file saving.
+- ◈ **Curated Forensic Test Gallery**: Pre-configured real-world demonstration cases including spliced financial records, active LSB steganography injections, and Photoshop EXIF metadata spoofs.
 - ⚖️ **Dual-Image Diff Comparator**: Side-by-side and interactive split slider comparisons between an authentic reference image (Slot A) and a suspect modified copy (Slot B).
 - 🔥 **Neon Crimson Delta Heatmap**: Real-time pixel-by-pixel difference analysis with an adjustable sensitivity slider (0–100), highlighting tampered, spliced, or digitally doctored pixels in high-contrast neon crimson against a dimmed grayscale base.
 - 🎨 **Channel & Edge Filter Isolator**: Multi-wavelength spectral inspection isolating Red, Green, and Blue channels, perceived luminance, inverted negatives, and 3x3 Laplacian spatial convolution for finding sharp splice boundary seams.
