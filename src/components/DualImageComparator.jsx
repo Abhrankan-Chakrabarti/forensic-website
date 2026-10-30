@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import ForensicLoupe from './ForensicLoupe.jsx';
 
 export default function DualImageComparator() {
   const [imageA, setImageA] = useState(null); // { src, name, size, width, height }
@@ -9,6 +10,8 @@ export default function DualImageComparator() {
   const [splitPos, setSplitPos] = useState(50);
   const [threshold, setThreshold] = useState(15); // sensitivity (0-100)
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isLoupeEnabled, setIsLoupeEnabled] = useState(false);
+  const [loupeZoom, setLoupeZoom] = useState(8);
 
   const fileInputARef = useRef(null);
   const fileInputBRef = useRef(null);
@@ -444,6 +447,44 @@ export default function DualImageComparator() {
               <span className="font-mono text-cyan-300 w-6">{threshold}</span>
             </div>
 
+            {/* Pixel Loupe Toggle */}
+            <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-xl text-xs">
+              <button
+                type="button"
+                onClick={() => setIsLoupeEnabled(!isLoupeEnabled)}
+                className={`px-2.5 py-1 rounded-lg font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                  isLoupeEnabled
+                    ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm shadow-cyan-500/30'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Toggle Floating Pixel Loupe Magnifier"
+              >
+                <span>🔍 Loupe</span>
+                <span className={`text-[10px] px-1 py-0.2 rounded font-mono ${isLoupeEnabled ? 'bg-slate-950 text-cyan-300' : 'bg-slate-800 text-slate-400'}`}>
+                  {loupeZoom}x
+                </span>
+              </button>
+
+              {isLoupeEnabled && (
+                <div className="flex items-center gap-0.5 pl-1 border-l border-slate-800">
+                  {[4, 8, 12].map((z) => (
+                    <button
+                      key={z}
+                      type="button"
+                      onClick={() => setLoupeZoom(z)}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition cursor-pointer ${
+                        loupeZoom === z
+                          ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {z}x
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Export Action */}
             {diffResultUrl && (
               <a
@@ -550,12 +591,14 @@ export default function DualImageComparator() {
               <div className="flex flex-col items-center">
                 {diffResultUrl ? (
                   <div className="relative">
-                    <img
+                    <ForensicLoupe
                       src={diffResultUrl}
                       alt="Delta Heatmap"
+                      zoom={loupeZoom}
+                      enabled={isLoupeEnabled}
                       className="max-h-120 max-w-full w-auto object-contain rounded-xl border border-slate-800 shadow-xl"
                     />
-                    <div className="absolute bottom-3 left-3 bg-slate-950/90 border border-rose-500/50 text-rose-300 text-xs px-2.5 py-1 rounded-md font-mono flex items-center gap-2">
+                    <div className="absolute bottom-3 left-3 bg-slate-950/90 border border-rose-500/50 text-rose-300 text-xs px-2.5 py-1 rounded-md font-mono flex items-center gap-2 pointer-events-none">
                       <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
                       <span>Altered Pixels Highlighted in Crimson</span>
                     </div>
@@ -568,17 +611,21 @@ export default function DualImageComparator() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                 <div className="flex flex-col items-center">
                   <span className="text-xs text-cyan-400 mb-2 font-medium">Image A (Reference)</span>
-                  <img
+                  <ForensicLoupe
                     src={imageA.src}
                     alt="Reference A"
+                    zoom={loupeZoom}
+                    enabled={isLoupeEnabled}
                     className="max-h-75 max-w-full w-auto object-contain rounded-xl border border-slate-800"
                   />
                 </div>
                 <div className="flex flex-col items-center">
                   <span className="text-xs text-rose-400 mb-2 font-medium">Image B (Suspect Copy)</span>
-                  <img
+                  <ForensicLoupe
                     src={imageB.src}
                     alt="Suspect B"
+                    zoom={loupeZoom}
+                    enabled={isLoupeEnabled}
                     className="max-h-75 max-w-full w-auto object-contain rounded-xl border border-slate-800"
                   />
                 </div>

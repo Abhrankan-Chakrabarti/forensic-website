@@ -24,6 +24,7 @@ A modern, high-performance web portal and client-side forensic inspection suite 
 ## ✨ Features & Capabilities
 
 - 🔬 **Error Level Analysis (ELA)**: Detect differences in compression error levels across image regions to reveal digital splices, edits, and recompression traces.
+- 🔍 **Interactive Forensic Pixel Loupe**: Real-time floating crosshair magnifier ($4\text{x}$–$12\text{x}$ zoom) with individual pixel grid lines, precise `(X, Y)` coordinate tracking, and live `RGB`, `HEX`, and luminance readouts.
 - 📋 **Direct Clipboard Ingestion (`Ctrl + V`)**: Instant triage of captured screenshots (`Win + Shift + S`) or copied web media without manual file saving.
 - ◈ **Curated Forensic Test Gallery**: Pre-configured real-world demonstration cases including spliced financial records, active LSB steganography injections, and Photoshop EXIF metadata spoofs.
 - ⚖️ **Dual-Image Diff Comparator**: Side-by-side and interactive split slider comparisons between an authentic reference image (Slot A) and a suspect modified copy (Slot B).
@@ -109,6 +110,7 @@ forensic-website/
 │   ├── components/
 │   │   ├── ChannelFilterView.jsx   # In-browser channel isolator & 8-bit plane steganalysis (RGB/Lum/Laplacian/LSB)
 │   │   ├── DualImageComparator.jsx # In-browser dual-image diff comparator & delta heatmap
+│   │   ├── ForensicLoupe.jsx       # Real-time floating pixel loupe with RGB/HEX/XY reticle
 │   │   ├── ForensicReportModal.jsx # Case dossier modal with print/PDF & JSON audit export
 │   │   ├── Histogram.jsx          # Real-time RGB and luminance distribution visualizer
 │   │   └── QuickAnalyzer.jsx      # Tabbed quick inspector (Single ELA & Dual Comparator)

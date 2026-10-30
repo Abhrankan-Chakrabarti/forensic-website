@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useId } from 'react';
+import ForensicLoupe from './ForensicLoupe.jsx';
 
 const FILTER_DESCRIPTIONS = {
   red: 'Red Channel: Highlights red wavelength intensity. Useful for skin tone consistency, shadow warmth anomalies, and infrared illumination checks.',
@@ -10,7 +11,12 @@ const FILTER_DESCRIPTIONS = {
   bitplanes: 'Bit-Plane Slicer & Steganalysis: Decomposes pixels into individual binary bit-planes (Bit 0 to Bit 7). Unedited natural images show pure sensor noise at Bit 0; structured patterns or text indicate LSB steganographic payloads or digital tampering.',
 };
 
-export default function ChannelFilterView({ imageSrc, fileName = 'image' }) {
+export default function ChannelFilterView({
+  imageSrc,
+  fileName = 'image',
+  isLoupeEnabled = false,
+  loupeZoom = 8,
+}) {
   const [activeFilter, setActiveFilter] = useState('blue');
   const [monochromeChannels, setMonochromeChannels] = useState(true);
   const [edgeBoost, setEdgeBoost] = useState(2);
@@ -408,9 +414,11 @@ export default function ChannelFilterView({ imageSrc, fileName = 'image' }) {
         )}
 
         {resultUrl ? (
-          <img
+          <ForensicLoupe
             src={resultUrl}
             alt={`Filter: ${activeFilter}`}
+            zoom={loupeZoom}
+            enabled={isLoupeEnabled}
             className="max-h-72 sm:max-h-95 md:max-h-115 max-w-full w-auto object-contain rounded-xl border border-slate-800 shadow-xl"
           />
         ) : (

@@ -5,6 +5,7 @@ import Histogram from './Histogram.jsx';
 import DualImageComparator from './DualImageComparator.jsx';
 import ChannelFilterView from './ChannelFilterView.jsx';
 import ForensicReportModal from './ForensicReportModal.jsx';
+import ForensicLoupe from './ForensicLoupe.jsx';
 
 export default function QuickAnalyzer() {
   const [activeTab, setActiveTab] = useState('single'); // 'single' (ELA/EXIF) or 'dual' (Diff Comparator)
@@ -17,6 +18,8 @@ export default function QuickAnalyzer() {
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [sampleDropdownOpen, setSampleDropdownOpen] = useState(false);
   const [pasteNotice, setPasteNotice] = useState(null);
+  const [isLoupeEnabled, setIsLoupeEnabled] = useState(false);
+  const [loupeZoom, setLoupeZoom] = useState(8); // 4, 8, 12
   const [elaScale, setElaScale] = useState(20);
   const [jpegQuality, setJpegQuality] = useState(0.9);
   const [viewMode, setViewMode] = useState('split'); // 'split', 'side-by-side', 'ela', 'original'
@@ -767,6 +770,44 @@ export default function QuickAnalyzer() {
               </div>
             )}
 
+            {/* Pixel Loupe Magnifier Control */}
+            <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-xl text-xs w-full sm:w-auto justify-between sm:justify-start">
+              <button
+                type="button"
+                onClick={() => setIsLoupeEnabled(!isLoupeEnabled)}
+                className={`px-2.5 py-1.5 rounded-lg font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                  isLoupeEnabled
+                    ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm shadow-cyan-500/30'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Toggle Floating Pixel Loupe Magnifier"
+              >
+                <span>🔍 Loupe</span>
+                <span className={`text-[10px] px-1 py-0.2 rounded font-mono ${isLoupeEnabled ? 'bg-slate-950 text-cyan-300' : 'bg-slate-800 text-slate-400'}`}>
+                  {loupeZoom}x
+                </span>
+              </button>
+
+              {isLoupeEnabled && (
+                <div className="flex items-center gap-0.5 pl-1.5 border-l border-slate-800">
+                  {[4, 8, 12].map((z) => (
+                    <button
+                      key={z}
+                      type="button"
+                      onClick={() => setLoupeZoom(z)}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition cursor-pointer ${
+                        loupeZoom === z
+                          ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {z}x
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {isProcessing && (
               <span className="text-cyan-400 text-xs animate-pulse font-medium text-center">
                 Recalculating...
@@ -885,18 +926,22 @@ export default function QuickAnalyzer() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
                 <div className="flex flex-col items-center">
                   <span className="text-xs text-slate-400 mb-2 font-medium">Original Image</span>
-                  <img
+                  <ForensicLoupe
                     src={imageSrc}
                     alt="Original Upload"
+                    zoom={loupeZoom}
+                    enabled={isLoupeEnabled}
                     className="max-h-60 sm:max-h-80 md:max-h-95 max-w-full w-auto object-contain rounded-xl border border-slate-800"
                   />
                 </div>
                 <div className="flex flex-col items-center">
                   <span className="text-xs text-cyan-400 mb-2 font-medium">ELA Difference Map</span>
                   {elaResultUrl ? (
-                    <img
+                    <ForensicLoupe
                       src={elaResultUrl}
                       alt="ELA Difference Map"
+                      zoom={loupeZoom}
+                      enabled={isLoupeEnabled}
                       className="max-h-60 sm:max-h-80 md:max-h-95 max-w-full w-auto object-contain rounded-xl border border-slate-800"
                     />
                   ) : (
@@ -907,21 +952,30 @@ export default function QuickAnalyzer() {
                 </div>
               </div>
             ) : viewMode === 'channels' ? (
-              <ChannelFilterView imageSrc={imageSrc} fileName={fileName} />
+              <ChannelFilterView
+                imageSrc={imageSrc}
+                fileName={fileName}
+                isLoupeEnabled={isLoupeEnabled}
+                loupeZoom={loupeZoom}
+              />
             ) : viewMode === 'original' ? (
               <div className="flex flex-col items-center">
-                <img
+                <ForensicLoupe
                   src={imageSrc}
                   alt="Original"
+                  zoom={loupeZoom}
+                  enabled={isLoupeEnabled}
                   className="max-h-72 sm:max-h-95 md:max-h-115 max-w-full w-auto object-contain rounded-xl border border-slate-800 shadow-xl"
                 />
               </div>
             ) : (
               <div className="flex flex-col items-center">
                 {elaResultUrl ? (
-                  <img
+                  <ForensicLoupe
                     src={elaResultUrl}
                     alt="ELA Difference Map"
+                    zoom={loupeZoom}
+                    enabled={isLoupeEnabled}
                     className="max-h-72 sm:max-h-95 md:max-h-115 max-w-full w-auto object-contain rounded-xl border border-slate-800 shadow-xl"
                   />
                 ) : (
