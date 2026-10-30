@@ -790,7 +790,7 @@ export default function QuickAnalyzer() {
 
               {isLoupeEnabled && (
                 <div className="flex items-center gap-0.5 pl-1.5 border-l border-slate-800">
-                  {[4, 8, 12].map((z) => (
+                  {[2, 4, 8, 12, 16].map((z) => (
                     <button
                       key={z}
                       type="button"

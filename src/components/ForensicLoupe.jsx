@@ -14,13 +14,13 @@ export default function ForensicLoupe({
 
   const imgRef = useRef(null);
   const loupeCanvasRef = useRef(null);
-  const sourceCanvasRef = useRef(null);
   const fullImageDataRef = useRef(null);
   const naturalDimensionsRef = useRef({ w: 0, h: 0 });
+  const lastPointerPosRef = useRef(null);
 
-  const LOUPE_SIZE = 170; // Diameter of circular loupe in px
+  const LOUPE_SIZE = 180; // Diameter of circular loupe in px
 
-  // Prepare offscreen canvas with full resolution image data for sampling
+  // Prepare full resolution raw pixel data for zero-artifact sampling
   useEffect(() => {
     if (!src) return;
 
@@ -39,7 +39,6 @@ export default function ForensicLoupe({
 
       try {
         fullImageDataRef.current = ctx.getImageData(0, 0, w, h);
-        sourceCanvasRef.current = canvas;
       } catch (err) {
         console.warn('Unable to extract imageData for pixel loupe:', err);
       }
@@ -47,10 +46,10 @@ export default function ForensicLoupe({
     img.src = src;
   }, [src]);
 
-  // Update loupe canvas and pixel telemetry on pointer move
+  // Robust pixel-level rendering algorithm using integer grid sampling
   const updateLoupe = useCallback(
     (clientX, clientY) => {
-      if (!enabled || !imgRef.current || !sourceCanvasRef.current || !fullImageDataRef.current) {
+      if (!enabled || !imgRef.current || !fullImageDataRef.current) {
         return;
       }
 
@@ -68,6 +67,8 @@ export default function ForensicLoupe({
       const { w, h } = naturalDimensionsRef.current;
       if (w === 0 || h === 0) return;
 
+      lastPointerPosRef.current = { clientX, clientY };
+
       // Calculate relative position within the rendered element
       const relX = (clientX - rect.left) / rect.width;
       const relY = (clientY - rect.top) / rect.height;
@@ -76,7 +77,7 @@ export default function ForensicLoupe({
       const px = Math.min(w - 1, Math.max(0, Math.floor(relX * w)));
       const py = Math.min(h - 1, Math.max(0, Math.floor(relY * h)));
 
-      // Read exact pixel values
+      // Read exact pixel values from raw image data
       const imgData = fullImageDataRef.current.data;
       const idx = (py * w + px) * 4;
       const r = imgData[idx];
@@ -110,82 +111,107 @@ export default function ForensicLoupe({
 
       ctx.clearRect(0, 0, LOUPE_SIZE, LOUPE_SIZE);
 
-      // Save circle clip path
+      // Save circular lens clipping mask
       ctx.save();
       ctx.beginPath();
       ctx.arc(LOUPE_SIZE / 2, LOUPE_SIZE / 2, LOUPE_SIZE / 2 - 2, 0, Math.PI * 2);
       ctx.clip();
 
-      ctx.imageSmoothingEnabled = false;
+      // Integer grid sampling: determine discrete integer radius of pixels to capture
+      const effectiveZoom = Math.max(2, Number(zoom) || 8);
+      const pixelRadius = Math.ceil(LOUPE_SIZE / (2 * effectiveZoom));
+      const sampleWidth = pixelRadius * 2 + 1;
 
-      // Determine source window size in image pixels
-      const sampleSpan = LOUPE_SIZE / zoom;
-      const halfSpan = sampleSpan / 2;
-      const sx = px - halfSpan + 0.5;
-      const sy = py - halfSpan + 0.5;
+      // Create a small offscreen buffer with exact discrete pixels
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = sampleWidth;
+      tempCanvas.height = sampleWidth;
+      const tempCtx = tempCanvas.getContext('2d');
+      const tempImgData = tempCtx.createImageData(sampleWidth, sampleWidth);
+      const d = tempImgData.data;
+
+      for (let dy = -pixelRadius; dy <= pixelRadius; dy++) {
+        for (let dx = -pixelRadius; dx <= pixelRadius; dx++) {
+          const imgX = px + dx;
+          const imgY = py + dy;
+          const outIdx = ((dy + pixelRadius) * sampleWidth + (dx + pixelRadius)) * 4;
+
+          if (imgX >= 0 && imgX < w && imgY >= 0 && imgY < h) {
+            const srcIdx = (imgY * w + imgX) * 4;
+            d[outIdx] = imgData[srcIdx];
+            d[outIdx + 1] = imgData[srcIdx + 1];
+            d[outIdx + 2] = imgData[srcIdx + 2];
+            d[outIdx + 3] = imgData[srcIdx + 3];
+          } else {
+            // Out of bounds background: subtle checkered slate pattern
+            const isEven = (Math.abs(imgX) + Math.abs(imgY)) % 2 === 0;
+            const shade = isEven ? 24 : 12;
+            d[outIdx] = shade;
+            d[outIdx + 1] = shade;
+            d[outIdx + 2] = shade + 4;
+            d[outIdx + 3] = 255;
+          }
+        }
+      }
+      tempCtx.putImageData(tempImgData, 0, 0);
+
+      // Scale discrete pixel grid up to loupe canvas with nearest-neighbor interpolation
+      ctx.imageSmoothingEnabled = false;
+      const renderSpan = sampleWidth * effectiveZoom;
+      const renderOffset = Math.round((LOUPE_SIZE - renderSpan) / 2);
 
       ctx.drawImage(
-        sourceCanvasRef.current,
-        sx,
-        sy,
-        sampleSpan,
-        sampleSpan,
+        tempCanvas,
         0,
         0,
-        LOUPE_SIZE,
-        LOUPE_SIZE
+        sampleWidth,
+        sampleWidth,
+        renderOffset,
+        renderOffset,
+        renderSpan,
+        renderSpan
       );
 
-      // Draw faint pixel grid if zoom is high enough
-      if (zoom >= 6) {
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      // Faint sub-pixel boundary grid
+      if (effectiveZoom >= 4) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
         ctx.lineWidth = 1;
-        const pixelStep = zoom;
-        const centerX = LOUPE_SIZE / 2;
-        const centerY = LOUPE_SIZE / 2;
-
-        for (let i = centerX % pixelStep; i < LOUPE_SIZE; i += pixelStep) {
+        for (let i = 0; i <= sampleWidth; i++) {
+          const linePos = Math.round(renderOffset + i * effectiveZoom) + 0.5;
           ctx.beginPath();
-          ctx.moveTo(i, 0);
-          ctx.lineTo(i, LOUPE_SIZE);
+          ctx.moveTo(linePos, renderOffset);
+          ctx.lineTo(linePos, renderOffset + renderSpan);
           ctx.stroke();
-        }
-        for (let j = centerY % pixelStep; j < LOUPE_SIZE; j += pixelStep) {
+
           ctx.beginPath();
-          ctx.moveTo(0, j);
-          ctx.lineTo(LOUPE_SIZE, j);
+          ctx.moveTo(renderOffset, linePos);
+          ctx.lineTo(renderOffset + renderSpan, linePos);
           ctx.stroke();
         }
       }
 
-      // Draw central crosshair reticle targeting the exact center pixel
-      const cx = LOUPE_SIZE / 2;
-      const cy = LOUPE_SIZE / 2;
-      const reticleRadius = Math.max(3, zoom / 2);
+      // Reticle targeting the exact center pixel
+      const centerPixelX = Math.round(renderOffset + pixelRadius * effectiveZoom);
+      const centerPixelY = Math.round(renderOffset + pixelRadius * effectiveZoom);
 
-      // Target pixel bounding box
-      ctx.strokeStyle = '#22d3ee'; // Cyan
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(
-        cx - reticleRadius,
-        cy - reticleRadius,
-        reticleRadius * 2,
-        reticleRadius * 2
-      );
+      // Cyan target pixel bounding box
+      ctx.strokeStyle = '#22d3ee';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(centerPixelX, centerPixelY, effectiveZoom, effectiveZoom);
 
-      // Crosshair lines
-      ctx.strokeStyle = 'rgba(34, 211, 238, 0.8)';
+      // Precision crosshair lines
+      ctx.strokeStyle = 'rgba(34, 211, 238, 0.85)';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(cx, 0);
-      ctx.lineTo(cx, cy - reticleRadius - 2);
-      ctx.moveTo(cx, cy + reticleRadius + 2);
-      ctx.lineTo(cx, LOUPE_SIZE);
+      ctx.moveTo(centerPixelX + effectiveZoom / 2, 0);
+      ctx.lineTo(centerPixelX + effectiveZoom / 2, centerPixelY - 2);
+      ctx.moveTo(centerPixelX + effectiveZoom / 2, centerPixelY + effectiveZoom + 2);
+      ctx.lineTo(centerPixelX + effectiveZoom / 2, LOUPE_SIZE);
 
-      ctx.moveTo(0, cy);
-      ctx.lineTo(cx - reticleRadius - 2, cy);
-      ctx.moveTo(cx + reticleRadius + 2, cy);
-      ctx.lineTo(LOUPE_SIZE, cy);
+      ctx.moveTo(0, centerPixelY + effectiveZoom / 2);
+      ctx.lineTo(centerPixelX - 2, centerPixelY + effectiveZoom / 2);
+      ctx.moveTo(centerPixelX + effectiveZoom + 2, centerPixelY + effectiveZoom / 2);
+      ctx.lineTo(LOUPE_SIZE, centerPixelY + effectiveZoom / 2);
       ctx.stroke();
 
       ctx.restore();
@@ -194,6 +220,13 @@ export default function ForensicLoupe({
     },
     [enabled, zoom, LOUPE_SIZE]
   );
+
+  // Immediately re-render loupe when zoom level changes
+  useEffect(() => {
+    if (enabled && lastPointerPosRef.current) {
+      updateLoupe(lastPointerPosRef.current.clientX, lastPointerPosRef.current.clientY);
+    }
+  }, [zoom, enabled, updateLoupe]);
 
   const handleMouseMove = (e) => {
     updateLoupe(e.clientX, e.clientY);
