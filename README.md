@@ -5,39 +5,82 @@
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Privacy: Zero--Knowledge](https://img.shields.io/badge/Privacy-100%25%20Client--Side-brightgreen.svg)](#-zero-knowledge-privacy-architecture)
 
 <p align="center">
   <img src="public/og-preview.png" alt="Digital Image Forensics Platform Preview" width="100%" />
 </p>
 
-A modern, high-performance web portal and client-side forensic inspection suite (`forensic.dpdns.org`), tailored for investigators, OSINT analysts, journalists, and cybersecurity researchers performing digital media authenticity verification. Built & architected by **Abhrankan Chakrabarti**.
+A modern, high-performance web portal and client-side forensic inspection suite ([forensic.dpdns.org](https://forensic.dpdns.org)), engineered for digital investigators, OSINT analysts, journalists, and cybersecurity researchers performing digital media authenticity verification. Built and architected by **Abhrankan Chakrabarti**.
 
 ---
 
 ## 🌐 Live Ecosystem
 
-- **Main Landing Portal & Client Inspector**: [forensic.dpdns.org](https://forensic.dpdns.org) — Features in-browser Error Level Analysis (ELA), EXIF metadata inspection & privacy sanitization, and the interactive Dual-Image Diff Comparator.
-- **Pixel Forensics Workbench**: [pixel.forensic.dpdns.org](https://pixel.forensic.dpdns.org) — Dedicated 44-algorithm forensic platform developed by **Omeshwar Bawane** (hosted and deployed on AWS Graviton2 ARM64 by **Abhrankan Chakrabarti**).
+- **Main Landing Portal & Client Inspector**: [forensic.dpdns.org](https://forensic.dpdns.org) — High-speed client-side forensic workstation featuring Error Level Analysis (ELA), 8-Bit Plane Steganalysis, Dual-Image Diff Heatmapping, EXIF Metadata Inspection & Sanitization, Cryptographic Checksums, and printable Audit Dossiers.
+- **Pixel Forensics Workbench**: [pixel.forensic.dpdns.org](https://pixel.forensic.dpdns.org) — Dedicated 44-algorithm forensic backend engine developed by **Omeshwar Bawane** (hosted and deployed on AWS Graviton2 ARM64 by **Abhrankan Chakrabarti**).
 
 ---
 
 ## ✨ Features & Capabilities
 
-- 🔬 **Error Level Analysis (ELA)**: Detect differences in compression error levels across image regions to reveal digital splices, edits, and recompression traces.
-- 🔍 **Interactive Forensic Pixel Loupe**: Real-time floating crosshair magnifier ($4\text{x}$–$12\text{x}$ zoom) with individual pixel grid lines, precise `(X, Y)` coordinate tracking, and live `RGB`, `HEX`, and luminance readouts.
-- 📋 **Direct Clipboard Ingestion (`Ctrl + V`)**: Instant triage of captured screenshots (`Win + Shift + S`) or copied web media without manual file saving.
-- ◈ **Curated Forensic Test Gallery**: Pre-configured real-world demonstration cases including spliced financial records, active LSB steganography injections, and Photoshop EXIF metadata spoofs.
-- ⚖️ **Dual-Image Diff Comparator**: Side-by-side and interactive split slider comparisons between an authentic reference image (Slot A) and a suspect modified copy (Slot B).
-- 🔥 **Neon Crimson Delta Heatmap**: Real-time pixel-by-pixel difference analysis with an adjustable sensitivity slider (0–100), highlighting tampered, spliced, or digitally doctored pixels in high-contrast neon crimson against a dimmed grayscale base.
-- 🎨 **Channel & Edge Filter Isolator**: Multi-wavelength spectral inspection isolating Red, Green, and Blue channels, perceived luminance, inverted negatives, and 3x3 Laplacian spatial convolution for finding sharp splice boundary seams.
-- 🧬 **Bit-Plane Slicer & LSB Steganalysis**: Full 8-bit binary plane decomposition (Bit 0 LSB to Bit 7 MSB) and combined lowest-3-bit amplification across Grayscale, Red, Green, and Blue channels to detect concealed payloads, steganographic watermarks, and entropy anomalies.
-- 🔒 **Cryptographic Evidence Checksums**: Automated hardware-accelerated **SHA-256** and **MD5** hashing to verify chain of custody and media integrity without uploading evidence.
-- 📑 **Printable Forensic Case Dossier**: One-click generation of audit-ready forensic case reports complete with Case ID, evidence plates, metadata extraction, examiner findings, PDF export, and JSON audit log.
-- 🛡️ **In-Browser EXIF & Metadata Sanitizer**: One-click local metadata stripper that cleans GPS coordinates, camera serial numbers, and software signatures, exporting privacy-safe JPEG or PNG files.
-- 📊 **Real-time Color & Luminance Histogram**: Live interactive RGB and brightness frequency distribution for detecting color channel clipping or unnatural grading.
-- 📋 **Zero-Dependency EXIF Extraction**: Instant browser-side decoding of TIFF/JPEG header structures, camera make/model, timestamps, exposure parameters, and known editing software flags (Photoshop, GIMP, Canva, etc.).
-- 🔒 **Zero-Knowledge Privacy Architecture**: 100% client-side HTML5 Canvas and Web API execution — image evidence is processed locally in memory and never transmitted to any external server.
-- 📄 **Forensic Export Pipeline**: Direct downloads for computed ELA heatmaps, delta difference maps, and sanitized clean copies.
+### 🔬 Error Level Analysis (ELA)
+- Re-compresses suspect images across customizable JPEG quality levels (75%–99%) and analyzes rate of compression error disparity.
+- Configurable error amplification scale (1x–30x) highlights non-uniform digital splices, cloned artifacts, and re-saved regions.
+- Seamless side-by-side split comparison views with real-time synchronized panning and inspection.
+
+### 🔍 Interactive Forensic Pixel Loupe
+- Real-time floating crosshair magnifier with selectable discrete magnification (`2x`, `4x`, `8x`, `12x`, `16x`).
+- Discrete integer grid sampling engine eliminating fractional canvas scaling distortion and edge clipping.
+- Precise `(X, Y)` natural pixel coordinate tracking with live `RGB`, `HEX (#RRGGBB)`, and perceptual luminance (`Y`) telemetry readouts.
+- Universal loupe integration across original imagery, computed ELA maps, spectral channel filters, and dual-image delta heatmaps.
+
+### 📋 Direct Clipboard Ingestion (`Ctrl + V`)
+- Global window-level paste event listener enabling instant triage of screenshots (`Win + Shift + S` / `Cmd + Shift + 4`) and copied media.
+- Zero local file saving or intermediate steps required for fast OSINT verification.
+
+### ◈ Curated Forensic Test Gallery
+- One-click demonstration cases pre-loaded with realistic forensic evidence:
+  1. **Spliced Financial Document**: Altered numerical entries exhibiting stark ELA compression discontinuities.
+  2. **LSB Steganography Payload**: Real classified text payload (`★ CLASSIFIED FORENSIC INTEL ★`) concealed within Bit 0.
+  3. **EXIF Metadata Spoof**: Camera firmware signatures modified with Adobe Photoshop tracking flags.
+
+### ⚖️ Dual-Image Diff Comparator & 🔥 Neon Crimson Delta Heatmap
+- Dual evidence slot loading (Reference Image vs. Suspect Image) with auto-normalization for unequal dimensions.
+- Side-by-side or split slider views with synced interactive zoom and pan.
+- Pixel-by-pixel Euclidean delta heatmap with dynamic sensitivity thresholding (0–100), highlighting altered pixels in high-contrast neon crimson against a dimmed background.
+
+### 🎨 Channel & Spatial Convolution Isolator
+- Independent color channel decomposition for **Red**, **Green**, and **Blue** spectrums.
+- Perceptual luminance calculation (`Y = 0.299R + 0.587G + 0.114B`) and high-contrast negative inversion.
+- 3x3 Laplacian spatial convolution kernel for edge discontinuity and splice boundary seam discovery.
+
+### 🧬 8-Bit Plane Decomposition & Steganalysis
+- Complete 8-bit binary slicing: isolates Bit 0 (LSB) up to Bit 7 (MSB) as independent visual binary planes.
+- Multi-channel decomposition across Grayscale, Red, Green, and Blue channels.
+- Amplified 3-bit LSB composite view (Bits 0–2 scaled by 36x) for exposing embedded watermarks, hidden text, and entropy deviations.
+
+### 🔒 Cryptographic Evidence Checksums
+- Automated, hardware-accelerated **SHA-256** (WebCrypto API) and pure-JavaScript **MD5** calculation.
+- One-click checksum copying to ensure unbroken chain of custody and media integrity verification without uploading files.
+
+### 📑 Printable Forensic Case Dossier
+- Generates professional, court- and audit-ready forensic case dossiers with automated unique Case IDs and timestamps.
+- Structured examiner details, agency affiliation, observational notes, and formal verdict selection (Authentic, Inconclusive, Tampered).
+- Side-by-side visual evidence plates with integrated checksum verification tables.
+- Print/PDF-ready styling (`@media print`) and one-click JSON audit log export for digital evidence management systems.
+
+### 🛡️ In-Browser EXIF Sanitization & Extraction
+- Zero-dependency binary parser for TIFF/JPEG markers, IFD tags, camera make/model, timestamps, exposure settings, and known editing software signatures.
+- One-click privacy sanitizer that strips all metadata and outputs clean, unidentifiable image files locally.
+
+### 📊 Real-Time Color & Luminance Histogram
+- Dynamic 256-bin histogram rendering frequency distributions for Red, Green, Blue, and Luminance channels.
+- Instantly diagnose color channel clipping, posterization, and unnatural color grading curves.
+
+### 🛡️ Zero-Knowledge Privacy Architecture
+- 100% client-side memory execution using HTML5 Canvas, WebCrypto, and ArrayBuffer operations.
+- Zero image data, telemetry, or metadata is ever transmitted over the network or saved to external servers.
 
 ---
 
@@ -47,7 +90,8 @@ A modern, high-performance web portal and client-side forensic inspection suite 
 - **Build Tool**: [Vite 8](https://vitejs.dev/)
 - **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) (using `@tailwindcss/vite`)
 - **Linting**: [ESLint](https://eslint.org/)
-- **CI/CD**: GitHub Actions automated pipeline with orphaned `build` branch deployment for EC2 Nginx serving
+- **Cryptography & Image APIs**: WebCrypto API (SHA-256), Pure-JS MD5, HTML5 Canvas2D Context, Clipboard API, FileReader
+- **CI/CD**: GitHub Actions automated pipeline deploying an orphaned `build` branch for EC2 Nginx serving
 
 ---
 
@@ -85,7 +129,7 @@ A modern, high-performance web portal and client-side forensic inspection suite 
 | Command | Description |
 | :--- | :--- |
 | `npm run dev` | Starts the Vite development server with Hot Module Replacement (HMR). |
-| `npm run build` | Builds the production bundle into the `dist/` directory. |
+| `npm run build` | Compiles the production bundle into the `dist/` directory. |
 | `npm run preview` | Locally previews the production build. |
 | `npm run lint` | Runs ESLint to verify code quality and style standards. |
 
@@ -109,8 +153,8 @@ forensic-website/
 ├── src/
 │   ├── components/
 │   │   ├── ChannelFilterView.jsx   # In-browser channel isolator & 8-bit plane steganalysis (RGB/Lum/Laplacian/LSB)
-│   │   ├── DualImageComparator.jsx # In-browser dual-image diff comparator & delta heatmap
-│   │   ├── ForensicLoupe.jsx       # Real-time floating pixel loupe with RGB/HEX/XY reticle
+│   │   ├── DualImageComparator.jsx # Dual-image diff comparator & neon crimson delta heatmap
+│   │   ├── ForensicLoupe.jsx       # Real-time integer-sampled pixel loupe (2x–16x) with RGB/HEX/XY reticle
 │   │   ├── ForensicReportModal.jsx # Case dossier modal with print/PDF & JSON audit export
 │   │   ├── Histogram.jsx          # Real-time RGB and luminance distribution visualizer
 │   │   └── QuickAnalyzer.jsx      # Tabbed quick inspector (Single ELA & Dual Comparator)
@@ -129,6 +173,28 @@ forensic-website/
 ├── SECURITY.md                  # Security & zero-knowledge privacy policy
 └── README.md                    # Project documentation
 ```
+
+---
+
+## 🌐 Deployment Architecture
+
+```mermaid
+flowchart LR
+    A["Developer (Git Push main)"] --> B["GitHub Actions CI/CD"]
+    B --> C["Automated Lint & Vite Build"]
+    C --> D["Orphaned 'build' Branch"]
+    D --> E["AWS EC2 Host (Amazon Linux)"]
+    E --> F["Nginx Web Server\n(forensic.dpdns.org)"]
+    E --> G["Gunicorn / Flask Backend\n(pixel.forensic.dpdns.org)"]
+```
+
+The platform is deployed across a dual-host architecture on AWS EC2:
+- **Main Portal (`forensic.dpdns.org`)**: Built by GitHub Actions on push to `main` and committed to an orphaned `build` branch containing only optimized static distribution assets served by Nginx.
+- **Pixel Forensics Workbench (`pixel.forensic.dpdns.org`)**: Hosts 44 deep-forensic algorithms running inside Python/Flask on AWS Graviton2 ARM64.
+- **Host Sync Command**: Updates to the production instances are synchronized in one command:
+  ```fish
+  update-all
+  ```
 
 ---
 
