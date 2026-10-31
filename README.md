@@ -44,6 +44,24 @@ A modern, high-performance web portal and client-side forensic inspection suite 
   1. **Spliced Financial Document**: Altered numerical entries exhibiting stark ELA compression discontinuities.
   2. **LSB Steganography Payload**: Real classified text payload (`★ CLASSIFIED FORENSIC INTEL ★`) concealed within Bit 0.
   3. **EXIF Metadata Spoof**: Camera firmware signatures modified with Adobe Photoshop tracking flags.
+  4. **AI Inpaint & Sensor Noise Disparity**: Diffusion-inpainted zero-noise region alongside a high-frequency spliced patch.
+
+### 📡 Sensor Noise & PRNU Inconsistency Analysis
+- Spatial high-frequency sensor noise extraction via 3x3 local mean residual ($Y - \bar{Y}$).
+- **Amplified Residual**: Amplifies high-frequency grain centered at mid-gray (128) with 4x–35x gain. AI-inpainted, blurred, or airbrushed regions appear unnaturally flat and smooth, while spliced foreign elements exhibit distinct grain disparity.
+- **Variance Heatmap**: Integral image $O(1)$ fast local variance computation across 5x5, 7x7, and 11x11 sliding windows mapped to a 4-stop thermal palette (Navy Blue for zero-noise / AI inpainting, Emerald Green for natural camera ISO grain, Crimson for high-noise splice disparity).
+
+### ✏️ Interactive Forensic Annotation & Caliper Measurement Suite
+- Vector drawing overlay mapped directly to natural image pixel coordinates.
+- **Forensic Tools**:
+  - 🔲 **Bounding Box**: Rectangular suspect region highlighting with label banners.
+  - 📏 **Caliper Ruler**: Dimension caliper measuring exact Euclidean pixel distance with live `↔ px (ΔX, ΔY)` readouts.
+  - ↗️ **Callout Arrow**: Directional pointers targeting microscopic splice seams.
+  - ⭕ **Target Ring**: Concentric circles with center crosshairs for circular artifacts.
+- Preset forensic tags (`[ELA Discontinuity]`, `[Noise Disparity]`, `[Splice Seam]`, `[Clone Artifact]`, `[Altered Text]`, `[Metadata Anomaly]`) and custom labeling.
+- Multi-accent forensic palette (Neon Cyan, Rose Red, Amber Gold, Emerald Green).
+- One-click **Export Plate** stamping date, filename, and examiner metadata banner.
+- **Seamless Dossier Integration**: Automatically embeds **Plate C: Annotated Examiner Findings** and structured coordinate breakdown into the official Printable Case Dossier and JSON audit export.
 
 ### ⚖️ Dual-Image Diff Comparator & 🔥 Neon Crimson Delta Heatmap
 - Dual evidence slot loading (Reference Image vs. Suspect Image) with auto-normalization for unequal dimensions.
@@ -152,12 +170,13 @@ forensic-website/
 │   └── og-preview.png           # OpenGraph & social preview banner (1200x630)
 ├── src/
 │   ├── components/
-│   │   ├── ChannelFilterView.jsx   # In-browser channel isolator & 8-bit plane steganalysis (RGB/Lum/Laplacian/LSB)
-│   │   ├── DualImageComparator.jsx # Dual-image diff comparator & neon crimson delta heatmap
-│   │   ├── ForensicLoupe.jsx       # Real-time integer-sampled pixel loupe (2x–16x) with RGB/HEX/XY reticle
-│   │   ├── ForensicReportModal.jsx # Case dossier modal with print/PDF & JSON audit export
-│   │   ├── Histogram.jsx          # Real-time RGB and luminance distribution visualizer
-│   │   └── QuickAnalyzer.jsx      # Tabbed quick inspector (Single ELA & Dual Comparator)
+│   │   ├── ChannelFilterView.jsx       # In-browser channel isolator, 8-bit plane steganalysis & sensor noise analysis
+│   │   ├── DualImageComparator.jsx     # Dual-image diff comparator & neon crimson delta heatmap
+│   │   ├── ForensicAnnotationOverlay.jsx # Interactive forensic annotation suite, calipers & bounding box markers
+│   │   ├── ForensicLoupe.jsx           # Real-time integer-sampled pixel loupe (2x–16x) with RGB/HEX/XY reticle
+│   │   ├── ForensicReportModal.jsx     # Case dossier modal with print/PDF & JSON audit export
+│   │   ├── Histogram.jsx              # Real-time RGB and luminance distribution visualizer
+│   │   └── QuickAnalyzer.jsx          # Tabbed quick inspector (Single ELA & Dual Comparator)
 │   ├── utils/
 │   │   ├── cryptoUtils.js         # Hardware-accelerated SHA-256 and pure-JS MD5 hashing
 │   │   └── exifParser.js          # Zero-dependency JPEG EXIF parser & software detector

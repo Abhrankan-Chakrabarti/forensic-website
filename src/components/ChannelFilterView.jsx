@@ -9,7 +9,48 @@ const FILTER_DESCRIPTIONS = {
   invert: 'Inverted (Negative): Inverts all color values. Useful for spotting faint watermarks, hidden text artifacts, and subtle gradient shifts in deep shadows or bright highlights.',
   edges: 'High-Pass Edge Seams: Computes a 3x3 Laplacian spatial convolution. Highlights sharp boundary discontinuities, pasted borders, and copy-move splice seams.',
   bitplanes: 'Bit-Plane Slicer & Steganalysis: Decomposes pixels into individual binary bit-planes (Bit 0 to Bit 7). Unedited natural images show pure sensor noise at Bit 0; structured patterns or text indicate LSB steganographic payloads or digital tampering.',
+  noise: 'Sensor Noise & PRNU Inconsistency: Extracts high-frequency physical sensor noise. Authentic camera captures show a uniform, continuous noise floor. AI-inpainted, airbrushed, or cloned patches exhibit flat zero-noise suppression, while foreign splices display sharp noise variance disparity.',
 };
+
+function getNoiseHeatmapColor(std) {
+  // Normalize std from 0 to 16
+  const t = Math.min(1, Math.max(0, std / 16));
+  // 4-stop thermal palette:
+  // 0.0 -> dark navy blue [15, 23, 42] (smoothed/AI inpaint/cloned)
+  // 0.2 -> purple [126, 34, 206]
+  // 0.45 -> emerald green [16, 185, 129] (natural ISO sensor floor)
+  // 0.7 -> amber [245, 158, 11]
+  // 1.0 -> neon crimson [244, 63, 94] (high noise splice)
+  if (t < 0.2) {
+    const s = t / 0.2;
+    return [
+      Math.round(15 + s * (126 - 15)),
+      Math.round(23 + s * (34 - 23)),
+      Math.round(42 + s * (206 - 42)),
+    ];
+  } else if (t < 0.45) {
+    const s = (t - 0.2) / 0.25;
+    return [
+      Math.round(126 + s * (16 - 126)),
+      Math.round(34 + s * (185 - 34)),
+      Math.round(206 + s * (129 - 206)),
+    ];
+  } else if (t < 0.7) {
+    const s = (t - 0.45) / 0.25;
+    return [
+      Math.round(16 + s * (245 - 16)),
+      Math.round(185 + s * (158 - 185)),
+      Math.round(129 + s * (11 - 129)),
+    ];
+  } else {
+    const s = (t - 0.7) / 0.3;
+    return [
+      Math.round(245 + s * (244 - 245)),
+      Math.round(158 + s * (63 - 158)),
+      Math.round(11 + s * (94 - 11)),
+    ];
+  }
+}
 
 export default function ChannelFilterView({
   imageSrc,
@@ -22,11 +63,14 @@ export default function ChannelFilterView({
   const [edgeBoost, setEdgeBoost] = useState(2);
   const [selectedBitPlane, setSelectedBitPlane] = useState(0); // 0 (LSB) to 7 (MSB) or 'combined'
   const [bitTargetChannel, setBitTargetChannel] = useState('lum'); // 'lum', 'red', 'green', 'blue'
+  const [noiseMode, setNoiseMode] = useState('residual'); // 'residual' (amplified) or 'variance' (heatmap)
+  const [noiseGain, setNoiseGain] = useState(12); // 2x to 40x
+  const [noiseWindow, setNoiseWindow] = useState(7); // 5, 7, 11
   const [resultUrl, setResultUrl] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const monoToggleId = useId();
 
-  const applyFilter = useCallback((src, filter, mono, boost, bitPlane, bitChan) => {
+  const applyFilter = useCallback((src, filter, mono, boost, bitPlane, bitChan, nMode, nGain, nWin) => {
     if (!src) return;
     setIsProcessing(true);
 
@@ -99,6 +143,95 @@ export default function ChannelFilterView({
           outData[i + 2] = bitOut;
           outData[i + 3] = 255;
         }
+      } else if (filter === 'noise') {
+        // High-frequency sensor noise extraction & variance mapping
+        const gray = new Float32Array(w * h);
+        for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+          // Use green/blue or luminance for sensor grain
+          gray[p] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        }
+
+        // Fast 3x3 local mean filter
+        const blurred = new Float32Array(w * h);
+        for (let y = 0; y < h; y++) {
+          const y0 = Math.max(0, y - 1);
+          const y1 = Math.min(h - 1, y + 1);
+          for (let x = 0; x < w; x++) {
+            const x0 = Math.max(0, x - 1);
+            const x1 = Math.min(w - 1, x + 1);
+            let sum = 0;
+            let count = 0;
+            for (let sy = y0; sy <= y1; sy++) {
+              for (let sx = x0; sx <= x1; sx++) {
+                sum += gray[sy * w + sx];
+                count++;
+              }
+            }
+            blurred[y * w + x] = sum / count;
+          }
+        }
+
+        const residual = new Float32Array(w * h);
+        for (let i = 0; i < w * h; i++) {
+          residual[i] = gray[i] - blurred[i];
+        }
+
+        if (nMode === 'residual') {
+          // Amplified residual centered at neutral mid-gray (128)
+          for (let i = 0; i < w * h; i++) {
+            const val = Math.round(128 + residual[i] * nGain);
+            const clamped = Math.min(255, Math.max(0, val));
+            const outIdx = i * 4;
+            outData[outIdx] = clamped;
+            outData[outIdx + 1] = clamped;
+            outData[outIdx + 2] = clamped;
+            outData[outIdx + 3] = 255;
+          }
+        } else {
+          // Variance heatmap via integral images (Summed-Area Tables)
+          const tw = w + 1;
+          const sumTable = new Float64Array(tw * (h + 1));
+          const sqTable = new Float64Array(tw * (h + 1));
+
+          for (let y = 0; y < h; y++) {
+            let rowSum = 0;
+            let rowSq = 0;
+            for (let x = 0; x < w; x++) {
+              const v = residual[y * w + x];
+              rowSum += v;
+              rowSq += v * v;
+              const idx = (y + 1) * tw + (x + 1);
+              const aboveIdx = y * tw + (x + 1);
+              sumTable[idx] = sumTable[aboveIdx] + rowSum;
+              sqTable[idx] = sqTable[aboveIdx] + rowSq;
+            }
+          }
+
+          const rad = Math.floor(nWin / 2);
+          for (let y = 0; y < h; y++) {
+            const y1 = Math.max(0, y - rad);
+            const y2 = Math.min(h, y + rad + 1);
+            for (let x = 0; x < w; x++) {
+              const x1 = Math.max(0, x - rad);
+              const x2 = Math.min(w, x + rad + 1);
+              const count = (x2 - x1) * (y2 - y1);
+
+              const sum = sumTable[y2 * tw + x2] - sumTable[y1 * tw + x2] - sumTable[y2 * tw + x1] + sumTable[y1 * tw + x1];
+              const sq = sqTable[y2 * tw + x2] - sqTable[y1 * tw + x2] - sqTable[y2 * tw + x1] + sqTable[y1 * tw + x1];
+
+              const mean = sum / count;
+              const variance = Math.max(0, (sq / count) - (mean * mean));
+              const std = Math.sqrt(variance);
+
+              const [r, g, b] = getNoiseHeatmapColor(std);
+              const outIdx = (y * w + x) * 4;
+              outData[outIdx] = r;
+              outData[outIdx + 1] = g;
+              outData[outIdx + 2] = b;
+              outData[outIdx + 3] = 255;
+            }
+          }
+        }
       } else {
         for (let i = 0; i < data.length; i += 4) {
           const r = data[i];
@@ -170,13 +303,15 @@ export default function ChannelFilterView({
   useEffect(() => {
     if (!imageSrc) return;
     const timer = setTimeout(() => {
-      applyFilter(imageSrc, activeFilter, monochromeChannels, edgeBoost, selectedBitPlane, bitTargetChannel);
+      applyFilter(imageSrc, activeFilter, monochromeChannels, edgeBoost, selectedBitPlane, bitTargetChannel, noiseMode, noiseGain, noiseWindow);
     }, 0);
     return () => clearTimeout(timer);
-  }, [imageSrc, activeFilter, monochromeChannels, edgeBoost, selectedBitPlane, bitTargetChannel, applyFilter]);
+  }, [imageSrc, activeFilter, monochromeChannels, edgeBoost, selectedBitPlane, bitTargetChannel, noiseMode, noiseGain, noiseWindow, applyFilter]);
 
   const exportFilename = activeFilter === 'bitplanes'
     ? `${fileName.replace(/\.[^/.]+$/, '')}_bitplane_${selectedBitPlane}_${bitTargetChannel}.png`
+    : activeFilter === 'noise'
+    ? `${fileName.replace(/\.[^/.]+$/, '')}_noise_${noiseMode}.png`
     : `${fileName.replace(/\.[^/.]+$/, '')}_${activeFilter}.png`;
 
   return (
@@ -262,6 +397,20 @@ export default function ChannelFilterView({
             <span>Bit Planes (LSB)</span>
             <span className="text-[10px] bg-purple-400/20 text-purple-200 px-1.5 py-0.2 rounded-full font-bold">
               8-Bit
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveFilter('noise')}
+            className={`px-3 py-1.5 rounded-lg font-medium transition cursor-pointer flex items-center gap-1.5 ${
+              activeFilter === 'noise'
+                ? 'bg-amber-500 text-slate-950 font-semibold shadow-sm shadow-amber-500/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <span>Sensor Noise</span>
+            <span className="text-[10px] bg-amber-400/30 text-amber-200 px-1.5 py-0.2 rounded-full font-bold">
+              PRNU
             </span>
           </button>
         </div>
@@ -388,6 +537,88 @@ export default function ChannelFilterView({
         </div>
       )}
 
+      {/* Sensor Noise Specialized Secondary Control Bar */}
+      {activeFilter === 'noise' && (
+        <div className="w-full bg-slate-950/70 border border-amber-500/30 rounded-xl p-3 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+          {/* Noise Mode Switcher */}
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400 font-mono text-[11px]">Mode:</span>
+            <div className="inline-flex bg-slate-900 border border-slate-800 p-0.5 rounded-lg text-[11px]">
+              <button
+                type="button"
+                onClick={() => setNoiseMode('residual')}
+                className={`px-3 py-1 rounded cursor-pointer transition ${
+                  noiseMode === 'residual'
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Amplified Grain (Residual)
+              </button>
+              <button
+                type="button"
+                onClick={() => setNoiseMode('variance')}
+                className={`px-3 py-1 rounded cursor-pointer transition ${
+                  noiseMode === 'variance'
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Variance Heatmap
+              </button>
+            </div>
+          </div>
+
+          {/* Sliders / Options */}
+          <div className="flex items-center gap-4 text-slate-300">
+            {noiseMode === 'residual' ? (
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-slate-400">Amplification: <strong>{noiseGain}x</strong></span>
+                <input
+                  type="range"
+                  min="4"
+                  max="35"
+                  step="1"
+                  value={noiseGain}
+                  onChange={(e) => setNoiseGain(Number(e.target.value))}
+                  className="w-24 accent-amber-400 cursor-pointer"
+                />
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-slate-400">Window:</span>
+                {[5, 7, 11].map((w) => (
+                  <button
+                    key={w}
+                    type="button"
+                    onClick={() => setNoiseWindow(w)}
+                    className={`px-2 py-0.5 rounded font-mono text-[10px] cursor-pointer transition ${
+                      noiseWindow === w
+                        ? 'bg-amber-500 text-slate-950 font-bold'
+                        : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
+                    }`}
+                  >
+                    {w}×{w}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Heatmap Legend */}
+            {noiseMode === 'variance' && (
+              <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono text-slate-400 pl-3 border-l border-slate-800">
+                <span className="inline-block w-2.5 h-2.5 rounded-sm bg-indigo-900" title="Low noise / AI inpaint / smoothing" />
+                <span>Zero Noise</span>
+                <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-500 ml-1" title="Natural sensor noise" />
+                <span>ISO Grain</span>
+                <span className="inline-block w-2.5 h-2.5 rounded-sm bg-rose-500 ml-1" title="High noise / splice" />
+                <span>Splice Disparity</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Description Context Pill */}
       <div className="w-full text-xs text-slate-400 bg-slate-950/60 border border-slate-800/80 px-3.5 py-2 rounded-xl flex items-center gap-2">
         <span className="text-cyan-400 text-sm">💡</span>
@@ -400,6 +631,10 @@ export default function ChannelFilterView({
               : selectedBitPlane === 'combined'
               ? 'Combined LSBs 0–2 (Amplified Noise Profile): Stretches the lowest 3 bits across the 8-bit dynamic range, highlighting concealed watermarks or payload boundaries.'
               : `Bit ${selectedBitPlane}: Mid-level bit-plane decomposing textural and gradual gradient transitions.`
+            : activeFilter === 'noise'
+            ? noiseMode === 'residual'
+              ? 'Amplified Residual: Displays the extracted high-frequency sensor grain centered around mid-gray. AI-inpainted, blurred, or airbrushed regions appear unnaturally smooth and flat, while pasted foreign elements exhibit distinct grain disparity.'
+              : 'Variance Heatmap: Computes sliding-window standard deviation of sensor noise. Deep indigo/purple highlights smoothed, cloned, or AI-inpainted areas with zero noise; emerald green represents natural camera ISO sensor grain; crimson red highlights high-variance spliced patches.'
             : FILTER_DESCRIPTIONS[activeFilter]}
         </span>
       </div>

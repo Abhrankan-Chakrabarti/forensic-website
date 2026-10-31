@@ -11,6 +11,8 @@ export default function ForensicReportModal({
   elaScale,
   jpegQuality,
   hashes,
+  annotatedPlateUrl = null,
+  annotations = [],
 }) {
   const [caseId] = useState(() => `CASE-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`);
   const [examinerName, setExaminerName] = useState('Forensic Analyst');
@@ -53,6 +55,14 @@ export default function ForensicReportModal({
         recompressionQuality: `${Math.round(jpegQuality * 100)}%`,
       },
       metadata: exifData || { notice: 'No EXIF metadata detected (potentially stripped or sanitized)' },
+      annotations: annotations.map((a, idx) => ({
+        index: idx + 1,
+        type: a.type,
+        label: a.label,
+        color: a.color,
+        coordinates: { x1: a.x1, y1: a.y1, x2: a.x2, y2: a.y2 },
+        distancePx: a.type === 'caliper' ? Math.round(Math.hypot(a.x2 - a.x1, a.y2 - a.y1)) : undefined,
+      })),
       examinerNotes,
     };
 
@@ -261,14 +271,14 @@ export default function ForensicReportModal({
             <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-400 print:text-cyan-800 mb-2">
               📸 Section 4: Forensic Evidence Plates
             </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className={`grid gap-4 ${annotatedPlateUrl ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'}`}>
               <div className="bg-slate-950/80 print:bg-slate-50 p-3 rounded-xl border border-slate-800 print:border-slate-300 flex flex-col items-center">
                 <span className="text-[11px] text-slate-400 print:text-black font-semibold mb-2">Plate A: Source Image Evidence</span>
                 {imageSrc && (
                   <img
                     src={imageSrc}
                     alt="Source Evidence"
-                    className="max-h-48 sm:max-h-60 w-auto object-contain rounded border border-slate-800 print:border-slate-300"
+                    className="max-h-48 sm:max-h-56 w-auto object-contain rounded border border-slate-800 print:border-slate-300"
                   />
                 )}
               </div>
@@ -278,11 +288,55 @@ export default function ForensicReportModal({
                   <img
                     src={elaResultUrl}
                     alt="ELA Map"
-                    className="max-h-48 sm:max-h-60 w-auto object-contain rounded border border-slate-800 print:border-slate-300"
+                    className="max-h-48 sm:max-h-56 w-auto object-contain rounded border border-slate-800 print:border-slate-300"
                   />
                 )}
               </div>
+              {annotatedPlateUrl && (
+                <div className="bg-slate-950/80 print:bg-slate-50 p-3 rounded-xl border border-slate-800 print:border-slate-300 flex flex-col items-center">
+                  <span className="text-[11px] text-amber-400 print:text-black font-semibold mb-2">Plate C: Annotated Examiner Findings</span>
+                  <img
+                    src={annotatedPlateUrl}
+                    alt="Annotated Evidence Plate"
+                    className="max-h-48 sm:max-h-56 w-auto object-contain rounded border border-slate-800 print:border-slate-300"
+                  />
+                </div>
+              )}
             </div>
+
+            {/* Annotated Findings Breakdown Table */}
+            {annotations.length > 0 && (
+              <div className="mt-3 bg-slate-950/70 print:bg-slate-100 border border-slate-800 print:border-slate-300 rounded-xl p-3 text-xs">
+                <span className="font-semibold text-cyan-400 print:text-cyan-800 block mb-2 font-mono text-[11px] uppercase">
+                  Annotated Tamper Coordinates & Measurements ({annotations.length})
+                </span>
+                <div className="divide-y divide-slate-800/80 print:divide-slate-300">
+                  {annotations.map((a, idx) => {
+                    const dx = Math.abs(a.x2 - a.x1);
+                    const dy = Math.abs(a.y2 - a.y1);
+                    const dist = Math.round(Math.hypot(dx, dy));
+                    return (
+                      <div key={a.id || idx} className="py-1.5 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono">
+                        <div className="flex items-center gap-2">
+                          <span className="px-1.5 py-0.2 rounded font-bold" style={{ backgroundColor: `${a.color}25`, color: a.color }}>
+                            #{idx + 1}
+                          </span>
+                          <span className="font-semibold text-slate-200 print:text-black uppercase">{a.type}</span>
+                          <span className="text-slate-400 print:text-slate-600">[{a.label}]</span>
+                        </div>
+                        <div className="text-slate-400 print:text-slate-700">
+                          {a.type === 'caliper' ? (
+                            <span>Span: <strong>{dist} px</strong> (ΔX:{dx}, ΔY:{dy})</span>
+                          ) : (
+                            <span>Coords: ({a.x1}, {a.y1}) → ({a.x2}, {a.y2})</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Examiner Notes */}

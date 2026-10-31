@@ -6,6 +6,7 @@ import DualImageComparator from './DualImageComparator.jsx';
 import ChannelFilterView from './ChannelFilterView.jsx';
 import ForensicReportModal from './ForensicReportModal.jsx';
 import ForensicLoupe from './ForensicLoupe.jsx';
+import ForensicAnnotationOverlay from './ForensicAnnotationOverlay.jsx';
 
 export default function QuickAnalyzer() {
   const [activeTab, setActiveTab] = useState('single'); // 'single' (ELA/EXIF) or 'dual' (Diff Comparator)
@@ -15,6 +16,8 @@ export default function QuickAnalyzer() {
   const [fileDetails, setFileDetails] = useState(null);
   const [exifData, setExifData] = useState(null);
   const [hashes, setHashes] = useState({ sha256: null, md5: null });
+  const [annotations, setAnnotations] = useState([]);
+  const [annotatedPlateUrl, setAnnotatedPlateUrl] = useState(null);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [sampleDropdownOpen, setSampleDropdownOpen] = useState(false);
   const [pasteNotice, setPasteNotice] = useState(null);
@@ -114,6 +117,8 @@ export default function QuickAnalyzer() {
     if (!file || !file.type.startsWith('image/')) return;
 
     setFileName(file.name);
+    setAnnotations([]);
+    setAnnotatedPlateUrl(null);
     setFileDetails({
       size: `${(file.size / 1024).toFixed(1)} KB`,
       type: file.type,
@@ -193,6 +198,8 @@ export default function QuickAnalyzer() {
 
   const loadSampleCase = (caseType = 'spliced') => {
     setSampleDropdownOpen(false);
+    setAnnotations([]);
+    setAnnotatedPlateUrl(null);
     const canvas = document.createElement('canvas');
     canvas.width = 640;
     canvas.height = 400;
@@ -305,6 +312,97 @@ export default function QuickAnalyzer() {
         .then((res) => res.arrayBuffer())
         .then(computeFileHashes)
         .then(setHashes);
+      return;
+    }
+
+    if (caseType === 'noise') {
+      // Background gradient with landscape contour
+      const grad = ctx.createLinearGradient(0, 0, 640, 400);
+      grad.addColorStop(0, '#1e293b');
+      grad.addColorStop(0.5, '#334155');
+      grad.addColorStop(1, '#0f172a');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 640, 400);
+
+      // Natural scene geometry
+      ctx.fillStyle = '#475569';
+      ctx.beginPath();
+      ctx.arc(320, 420, 260, Math.PI, 0);
+      ctx.fill();
+
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath();
+      ctx.arc(180, 360, 140, Math.PI, 0);
+      ctx.fill();
+
+      // Add realistic camera ISO sensor grain across the entire frame
+      const imgData = ctx.getImageData(0, 0, 640, 400);
+      const d = imgData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const grain = (Math.random() - 0.5) * 36;
+        d[i] = Math.min(255, Math.max(0, d[i] + grain));
+        d[i + 1] = Math.min(255, Math.max(0, d[i + 1] + grain));
+        d[i + 2] = Math.min(255, Math.max(0, d[i + 2] + grain));
+      }
+      ctx.putImageData(imgData, 0, 0);
+
+      // Area 1: AI Inpainted / Erased Region (Zero-Noise Spatial Smoothing)
+      ctx.fillStyle = '#3f4e65';
+      ctx.beginPath();
+      ctx.ellipse(320, 180, 85, 50, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('AI INPAINTED (ZERO NOISE)', 320, 184);
+
+      // Area 2: Foreign Spliced Patch with Elevated Noise Disparity
+      ctx.fillStyle = '#1e1e2f';
+      ctx.fillRect(460, 50, 150, 80);
+      const patchData = ctx.getImageData(460, 50, 150, 80);
+      const pd = patchData.data;
+      for (let i = 0; i < pd.length; i += 4) {
+        const harshNoise = (Math.random() - 0.5) * 90;
+        pd[i] = Math.min(255, Math.max(0, pd[i] + harshNoise));
+        pd[i + 1] = Math.min(255, Math.max(0, pd[i + 1] + harshNoise));
+        pd[i + 2] = Math.min(255, Math.max(0, pd[i + 2] + harshNoise));
+      }
+      ctx.putImageData(patchData, 460, 50);
+
+      ctx.strokeStyle = '#f43f5e';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(460, 50, 150, 80);
+      ctx.fillStyle = '#f43f5e';
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('SPLICED PATCH', 535, 95);
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      setFileName('ai_inpaint_sensor_noise.jpg');
+      setFileDetails({
+        size: '68.5 KB',
+        type: 'image/jpeg',
+        lastModified: new Date().toLocaleDateString(),
+      });
+      setExifData({
+        hasExif: true,
+        make: 'Sony',
+        model: 'Alpha 7 IV (Sensor Simulation)',
+        software: 'Generative Diffusion Inpaint Suite v2.4',
+        dateTimeOriginal: new Date().toLocaleDateString(),
+        iso: 800,
+        fNumber: 'f/2.8',
+        exposureTime: '1/250s',
+      });
+      setImageSrc(dataUrl);
+      setLoadVersion((v) => v + 1);
+
+      fetch(dataUrl)
+        .then((res) => res.arrayBuffer())
+        .then(computeFileHashes)
+        .then(setHashes);
+
+      setViewMode('channels');
       return;
     }
 
@@ -578,6 +676,20 @@ export default function QuickAnalyzer() {
                     Photo with Photoshop editing suite trace and timestamp anomalies.
                   </p>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => loadSampleCase('noise')}
+                  className="w-full text-left p-2 rounded-lg hover:bg-slate-800 transition cursor-pointer text-xs group"
+                >
+                  <div className="font-semibold text-rose-400 flex items-center justify-between">
+                    <span>🤖 AI Inpaint & Sensor Noise</span>
+                    <span className="text-[10px] text-rose-300/80 font-mono">PRNU Grain</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Simulated camera sensor grain with zero-noise inpainting and spliced patch.
+                  </p>
+                </button>
               </div>
             )}
           </div>
@@ -737,10 +849,25 @@ export default function QuickAnalyzer() {
               >
                 Original
               </button>
+              <button
+                onClick={() => setViewMode('annotate')}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition cursor-pointer shrink-0 text-center flex-1 sm:flex-initial flex items-center justify-center gap-1.5 ${
+                  viewMode === 'annotate' ? 'bg-cyan-500 text-black font-semibold' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <span>✏️ Annotate</span>
+                {annotations.length > 0 && (
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                    viewMode === 'annotate' ? 'bg-slate-950 text-cyan-300' : 'bg-cyan-500/20 text-cyan-300'
+                  }`}>
+                    {annotations.length}
+                  </span>
+                )}
+              </button>
             </div>
 
             {/* Sliders (shown for ELA modes) */}
-            {viewMode !== 'channels' && (
+            {viewMode !== 'channels' && viewMode !== 'annotate' && (
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-6 text-xs text-slate-300 w-full lg:w-auto">
                 <div className="flex items-center justify-between sm:justify-start gap-3 bg-slate-900/40 sm:bg-transparent p-2 sm:p-0 rounded-lg">
                   <span className="shrink-0">Amplification: <strong>{elaScale}x</strong></span>
@@ -771,42 +898,44 @@ export default function QuickAnalyzer() {
             )}
 
             {/* Pixel Loupe Magnifier Control */}
-            <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-xl text-xs w-full sm:w-auto justify-between sm:justify-start">
-              <button
-                type="button"
-                onClick={() => setIsLoupeEnabled(!isLoupeEnabled)}
-                className={`px-2.5 py-1.5 rounded-lg font-medium transition cursor-pointer flex items-center gap-1.5 ${
-                  isLoupeEnabled
-                    ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm shadow-cyan-500/30'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="Toggle Floating Pixel Loupe Magnifier"
-              >
-                <span>🔍 Loupe</span>
-                <span className={`text-[10px] px-1 py-0.2 rounded font-mono ${isLoupeEnabled ? 'bg-slate-950 text-cyan-300' : 'bg-slate-800 text-slate-400'}`}>
-                  {loupeZoom}x
-                </span>
-              </button>
+            {viewMode !== 'annotate' && (
+              <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-xl text-xs w-full sm:w-auto justify-between sm:justify-start">
+                <button
+                  type="button"
+                  onClick={() => setIsLoupeEnabled(!isLoupeEnabled)}
+                  className={`px-2.5 py-1.5 rounded-lg font-medium transition cursor-pointer flex items-center gap-1.5 ${
+                    isLoupeEnabled
+                      ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm shadow-cyan-500/30'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Toggle Floating Pixel Loupe Magnifier"
+                >
+                  <span>🔍 Loupe</span>
+                  <span className={`text-[10px] px-1 py-0.2 rounded font-mono ${isLoupeEnabled ? 'bg-slate-950 text-cyan-300' : 'bg-slate-800 text-slate-400'}`}>
+                    {loupeZoom}x
+                  </span>
+                </button>
 
-              {isLoupeEnabled && (
-                <div className="flex items-center gap-0.5 pl-1.5 border-l border-slate-800">
-                  {[2, 4, 8, 12, 16].map((z) => (
-                    <button
-                      key={z}
-                      type="button"
-                      onClick={() => setLoupeZoom(z)}
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition cursor-pointer ${
-                        loupeZoom === z
-                          ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      {z}x
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+                {isLoupeEnabled && (
+                  <div className="flex items-center gap-0.5 pl-1.5 border-l border-slate-800">
+                    {[2, 4, 8, 12, 16].map((z) => (
+                      <button
+                        key={z}
+                        type="button"
+                        onClick={() => setLoupeZoom(z)}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition cursor-pointer ${
+                          loupeZoom === z
+                            ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/40'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {z}x
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {isProcessing && (
               <span className="text-cyan-400 text-xs animate-pulse font-medium text-center">
@@ -817,7 +946,15 @@ export default function QuickAnalyzer() {
 
           {/* Image Display Area */}
           <div className="bg-slate-950/80 border border-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 overflow-hidden flex justify-center items-center min-h-60 sm:min-h-80 select-none">
-            {viewMode === 'split' ? (
+            {viewMode === 'annotate' ? (
+              <ForensicAnnotationOverlay
+                imageSrc={imageSrc}
+                annotations={annotations}
+                onAnnotationsChange={setAnnotations}
+                onExportFlattened={setAnnotatedPlateUrl}
+                fileName={fileName}
+              />
+            ) : viewMode === 'split' ? (
               <div className="w-full flex flex-col items-center">
                 <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-3 text-xs w-full">
                   <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 px-2.5 sm:px-3 py-1 rounded-lg text-center">
@@ -1161,6 +1298,8 @@ export default function QuickAnalyzer() {
         elaScale={elaScale}
         jpegQuality={jpegQuality}
         hashes={hashes}
+        annotatedPlateUrl={annotatedPlateUrl}
+        annotations={annotations}
       />
     </div>
   );
