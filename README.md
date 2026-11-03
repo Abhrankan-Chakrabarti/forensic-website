@@ -46,6 +46,18 @@ A modern, high-performance web portal and client-side forensic inspection suite 
   3. **EXIF Metadata Spoof**: Camera firmware signatures modified with Adobe Photoshop tracking flags.
   4. **AI Inpaint & Sensor Noise Disparity**: Diffusion-inpainted zero-noise region alongside a high-frequency spliced patch.
   5. **Copy-Move Cloned Object**: Surveillance post featuring duplicated radar tower geometry and shift vector.
+  6. **Ancient Egyptian Stela (Dynasty XVIII)**: Museum-grade multispectral capture of an 18th-Dynasty pharaonic relief for canon grid alignment and Ma'at dissonance verification.
+
+### 𓌴 The Ma'at Lens: Ancient Egyptian Canon of Proportions Analyzer
+- Antiquities and ancient art forensic authentication engine based on the Pharaonic Canon of Proportions (Iversen / Robins canonical grid standards).
+- **Dual Canon Periods**:
+  - **Classical 18-Square Canon**: Covers Old, Middle, and New Kingdoms (Soles at Line 0 to Hairline at Line 18).
+  - **Late Period 21-Square Canon**: Covers the 26th Dynasty (Saite) through the Ptolemaic era (Soles to Eye/Hairline).
+- **Square Grid Projection**: Projects horizontal canonical registers and vertical axial plumb-lines with adjustable opacity.
+- **Interactive Landmark Telemetry**: Draggable pins for Hairline (L18), Shoulders (L16), Elbows (L12), Navel/Waist (L11), Groin/Buttock (L9), Knees (L6), Ankles (L1), and Soles (L0).
+- **Mathematical Dissonance Telemetry**: Computes per-joint canonical deviation ($\delta = |Y_{actual} - Y_{expected}| / \text{unit}$) in Egyptian square units.
+- **Ma'at Compliance Score (0–100%)**: Automatically assesses adherence to ancient canonical standards to distinguish authentic Egyptian antiquities from modern counterfeits and provincial forgeries.
+- **Archival Export**: One-click download of high-resolution antiquity plates stamped with forensic grid lines, pin telemetry, and compliance verdicts.
 
 ### 👥 Copy-Move (Clone Stamp) Forgery Detection
 - Identifies duplicated image regions created via clone-stamp, healing brush, or copy-paste operations to replicate or erase objects.
@@ -189,6 +201,7 @@ forensic-website/
 │   │   ├── ForensicLoupe.jsx           # Real-time integer-sampled pixel loupe (2x–16x) with RGB/HEX/XY reticle
 │   │   ├── ForensicReportModal.jsx     # Case dossier modal with print/PDF & JSON audit export
 │   │   ├── Histogram.jsx              # Real-time RGB and luminance distribution visualizer
+│   │   ├── MaatLens.jsx               # The Ma'at Lens: Ancient Egyptian Canon of Proportions analyzer
 │   │   └── QuickAnalyzer.jsx          # Tabbed quick inspector (Single ELA & Dual Comparator)
 │   ├── utils/
 │   │   ├── cryptoUtils.js         # Hardware-accelerated SHA-256 and pure-JS MD5 hashing

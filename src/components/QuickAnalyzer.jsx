@@ -7,6 +7,7 @@ import ChannelFilterView from './ChannelFilterView.jsx';
 import ForensicReportModal from './ForensicReportModal.jsx';
 import ForensicLoupe from './ForensicLoupe.jsx';
 import ForensicAnnotationOverlay from './ForensicAnnotationOverlay.jsx';
+import MaatLens from './MaatLens.jsx';
 
 export default function QuickAnalyzer() {
   const [activeTab, setActiveTab] = useState('single'); // 'single' (ELA/EXIF) or 'dual' (Diff Comparator)
@@ -511,6 +512,151 @@ export default function QuickAnalyzer() {
       return;
     }
 
+    if (caseType === 'maat') {
+      const grad = ctx.createLinearGradient(0, 0, 640, 400);
+      grad.addColorStop(0, '#d6c5a5');
+      grad.addColorStop(0.5, '#c9b491');
+      grad.addColorStop(1, '#baa37f');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 640, 400);
+
+      // Carved stela rounded border arch
+      ctx.strokeStyle = '#856f4d';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(30, 20, 580, 360);
+      ctx.strokeRect(40, 30, 560, 340);
+
+      // Hieroglyphic register band at top
+      ctx.fillStyle = '#6b583c';
+      ctx.font = 'bold 13px serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('DYNASTY XVIII PHARAONIC CANONICAL REGISTER • SOLITARY STELA', 320, 58);
+
+      // Standing Pharaoh in Canonical Profile
+      // Soles L0 = 340px, Hairline L18 = 88px, Total H = 252px, 1 Grid Unit = 14px
+      const ox = 320;
+      const unit = 14;
+      const solesY = 340;
+
+      ctx.fillStyle = '#a65628';
+      ctx.strokeStyle = '#3e2312';
+      ctx.lineWidth = 2;
+
+      // Legs in walking profile (L0 Soles to L6 Knees = 256px, L9 Groin = 214px)
+      ctx.beginPath();
+      ctx.moveTo(ox - 35, solesY);
+      ctx.lineTo(ox - 25, solesY - 6 * unit);
+      ctx.lineTo(ox - 10, solesY - 9 * unit);
+      ctx.lineTo(ox + 20, solesY - 6 * unit);
+      ctx.lineTo(ox + 35, solesY);
+      ctx.lineTo(ox + 15, solesY);
+      ctx.lineTo(ox + 5, solesY - 6 * unit);
+      ctx.lineTo(ox - 15, solesY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Royal Shendyt Kilt (L8.5 to L11 Waist)
+      ctx.fillStyle = '#fef08a';
+      ctx.beginPath();
+      ctx.moveTo(ox - 22, solesY - 8.5 * unit);
+      ctx.lineTo(ox + 25, solesY - 8.5 * unit);
+      ctx.lineTo(ox + 20, solesY - 11 * unit);
+      ctx.lineTo(ox - 18, solesY - 11 * unit);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#ca8a04';
+      ctx.stroke();
+
+      // Torso & Shoulders (L11 Waist to L16 Shoulders)
+      ctx.fillStyle = '#a65628';
+      ctx.beginPath();
+      ctx.moveTo(ox - 18, solesY - 11 * unit);
+      ctx.lineTo(ox - 38, solesY - 16 * unit);
+      ctx.lineTo(ox + 38, solesY - 16 * unit);
+      ctx.lineTo(ox + 20, solesY - 11 * unit);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#3e2312';
+      ctx.stroke();
+
+      // Broad Collar / Wesekh
+      ctx.fillStyle = '#06b6d4';
+      ctx.beginPath();
+      ctx.arc(ox, solesY - 15.5 * unit, 25, 0, Math.PI);
+      ctx.fill();
+
+      // Head & Nemes Headdress (L16 Shoulders to L18 Hairline)
+      ctx.fillStyle = '#a65628';
+      ctx.beginPath();
+      ctx.arc(ox - 4, solesY - 17 * unit, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Royal Nemes stripes
+      ctx.fillStyle = '#1e3a8a';
+      ctx.fillRect(ox - 16, solesY - 18.5 * unit, 26, 12);
+      ctx.fillStyle = '#eab308';
+      ctx.fillRect(ox - 16, solesY - 18 * unit, 26, 4);
+
+      // Frontal eye
+      ctx.fillStyle = '#020617';
+      ctx.beginPath();
+      ctx.ellipse(ox - 6, solesY - 17.2 * unit, 4, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Arms extending to L12 Elbows
+      ctx.strokeStyle = '#a65628';
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(ox - 34, solesY - 16 * unit);
+      ctx.lineTo(ox - 38, solesY - 12 * unit);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(ox + 34, solesY - 16 * unit);
+      ctx.lineTo(ox + 42, solesY - 12 * unit);
+      ctx.stroke();
+
+      // Stone grain & patina
+      const imgData = ctx.getImageData(0, 0, 640, 400);
+      const d = imgData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const noise = (Math.random() - 0.5) * 20;
+        d[i] = Math.min(255, Math.max(0, d[i] + noise));
+        d[i + 1] = Math.min(255, Math.max(0, d[i + 1] + noise));
+        d[i + 2] = Math.min(255, Math.max(0, d[i + 2] + noise));
+      }
+      ctx.putImageData(imgData, 0, 0);
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      setFileName('ancient_pharaonic_stela_dyn18.jpg');
+      setFileDetails({
+        size: '86.2 KB',
+        type: 'image/jpeg',
+        lastModified: new Date().toLocaleDateString(),
+      });
+      setExifData({
+        hasExif: true,
+        make: 'Hasselblad',
+        model: 'H6D-100c Museum Multispectral',
+        software: 'Curatorial Archival Scanner v4.1',
+        dateTimeOriginal: '2026:08:14 11:20:00',
+        iso: 100,
+        fNumber: 'f/8.0',
+        exposureTime: '1/60s',
+      });
+      setImageSrc(dataUrl);
+      setLoadVersion((v) => v + 1);
+
+      fetch(dataUrl)
+        .then((res) => res.arrayBuffer())
+        .then(computeFileHashes)
+        .then(setHashes);
+
+      setViewMode('maat');
+      return;
+    }
+
     // Default: Spliced Document & ELA Tamper
     const grad = ctx.createLinearGradient(0, 0, 640, 400);
     grad.addColorStop(0, '#0f172a');
@@ -952,6 +1098,20 @@ export default function QuickAnalyzer() {
                     Surveillance station with duplicated radar tower & shift vectors.
                   </p>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => loadSampleCase('maat')}
+                  className="w-full text-left p-2 rounded-lg hover:bg-slate-800 transition cursor-pointer text-xs group"
+                >
+                  <div className="font-semibold text-amber-400 flex items-center justify-between">
+                    <span>𓌴 Ancient Egyptian Stela</span>
+                    <span className="text-[10px] text-amber-300/80 font-mono">Ma&apos;at Canon</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    18th Dynasty pharaonic relief for canon grid alignment & dissonance.
+                  </p>
+                </button>
               </div>
             )}
           </div>
@@ -1136,10 +1296,19 @@ export default function QuickAnalyzer() {
                   </span>
                 )}
               </button>
+              <button
+                onClick={() => setViewMode('maat')}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition cursor-pointer shrink-0 text-center flex-1 sm:flex-initial flex items-center justify-center gap-1.5 ${
+                  viewMode === 'maat' ? 'bg-amber-400 text-slate-950 font-bold shadow-sm shadow-amber-400/20' : 'text-slate-400 hover:text-white'
+                }`}
+                title="The Ma'at Lens: Ancient Egyptian Canon of Proportions Analyzer"
+              >
+                <span>𓌴 Ma&apos;at Lens</span>
+              </button>
             </div>
 
             {/* Sliders (shown for ELA modes) */}
-            {viewMode !== 'channels' && viewMode !== 'annotate' && (
+            {viewMode !== 'channels' && viewMode !== 'annotate' && viewMode !== 'maat' && (
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-6 text-xs text-slate-300 w-full lg:w-auto">
                 <div className="flex items-center justify-between sm:justify-start gap-3 bg-slate-900/40 sm:bg-transparent p-2 sm:p-0 rounded-lg">
                   <span className="shrink-0">Amplification: <strong>{elaScale}x</strong></span>
@@ -1170,7 +1339,7 @@ export default function QuickAnalyzer() {
             )}
 
             {/* Pixel Loupe Magnifier Control */}
-            {viewMode !== 'annotate' && (
+            {viewMode !== 'annotate' && viewMode !== 'maat' && (
               <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-xl text-xs w-full sm:w-auto justify-between sm:justify-start">
                 <button
                   type="button"
@@ -1218,7 +1387,13 @@ export default function QuickAnalyzer() {
 
           {/* Image Display Area */}
           <div className="bg-slate-950/80 border border-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 overflow-hidden flex justify-center items-center min-h-60 sm:min-h-80 select-none">
-            {viewMode === 'annotate' ? (
+            {viewMode === 'maat' ? (
+              <MaatLens
+                imageSrc={imageSrc}
+                fileName={fileName}
+                onExportPlate={(dataUrl) => setAnnotatedPlateUrl(dataUrl)}
+              />
+            ) : viewMode === 'annotate' ? (
               <ForensicAnnotationOverlay
                 imageSrc={imageSrc}
                 annotations={annotations}
