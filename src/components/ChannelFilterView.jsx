@@ -10,17 +10,11 @@ const FILTER_DESCRIPTIONS = {
   edges: 'High-Pass Edge Seams: Computes a 3x3 Laplacian spatial convolution. Highlights sharp boundary discontinuities, pasted borders, and copy-move splice seams.',
   bitplanes: 'Bit-Plane Slicer & Steganalysis: Decomposes pixels into individual binary bit-planes (Bit 0 to Bit 7). Unedited natural images show pure sensor noise at Bit 0; structured patterns or text indicate LSB steganographic payloads or digital tampering.',
   noise: 'Sensor Noise & PRNU Inconsistency: Extracts high-frequency physical sensor noise. Authentic camera captures show a uniform, continuous noise floor. AI-inpainted, airbrushed, or cloned patches exhibit flat zero-noise suppression, while foreign splices display sharp noise variance disparity.',
+  clones: 'Copy-Move Clone Detection: Identifies duplicated image regions created via clone-stamp, healing brush, or copy-paste operations to hide or replicate objects. Uses spatial block feature matching and shift-vector clustering to isolate identical patches and draw connecting displacement vectors.',
 };
 
 function getNoiseHeatmapColor(std) {
-  // Normalize std from 0 to 16
   const t = Math.min(1, Math.max(0, std / 16));
-  // 4-stop thermal palette:
-  // 0.0 -> dark navy blue [15, 23, 42] (smoothed/AI inpaint/cloned)
-  // 0.2 -> purple [126, 34, 206]
-  // 0.45 -> emerald green [16, 185, 129] (natural ISO sensor floor)
-  // 0.7 -> amber [245, 158, 11]
-  // 1.0 -> neon crimson [244, 63, 94] (high noise splice)
   if (t < 0.2) {
     const s = t / 0.2;
     return [
@@ -52,6 +46,163 @@ function getNoiseHeatmapColor(std) {
   }
 }
 
+// Spatial Block Matching & Shift-Vector Clustering Algorithm
+function detectCopyMoveClones(sourceCanvas, origWidth, origHeight, sensitivity = 'medium', minDistance = 35) {
+  const maxDim = 520;
+  const scale = Math.max(1, Math.max(origWidth, origHeight) / maxDim);
+  const aw = Math.round(origWidth / scale);
+  const ah = Math.round(origHeight / scale);
+
+  const smallCanvas = document.createElement('canvas');
+  smallCanvas.width = aw;
+  smallCanvas.height = ah;
+  const smallCtx = smallCanvas.getContext('2d');
+  smallCtx.drawImage(sourceCanvas, 0, 0, aw, ah);
+  const smallImgData = smallCtx.getImageData(0, 0, aw, ah);
+  const d = smallImgData.data;
+
+  const gray = new Float32Array(aw * ah);
+  for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+    gray[p] = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+  }
+
+  const B = 16;
+  const S = 6;
+  const scaledMinDist = minDistance / scale;
+
+  const diffThreshold = sensitivity === 'high' ? 26 : sensitivity === 'low' ? 12 : 18;
+  const minVotes = sensitivity === 'high' ? 3 : sensitivity === 'low' ? 5 : 4;
+
+  const blocks = [];
+  const halfB = Math.floor(B / 2);
+
+  for (let y = 0; y <= ah - B; y += S) {
+    for (let x = 0; x <= aw - B; x += S) {
+      let q1 = 0, q2 = 0, q3 = 0, q4 = 0;
+      let sum = 0, sqSum = 0;
+
+      for (let by = 0; by < B; by++) {
+        const rowOffset = (y + by) * aw + x;
+        const isTop = by < halfB;
+        for (let bx = 0; bx < B; bx++) {
+          const val = gray[rowOffset + bx];
+          sum += val;
+          sqSum += val * val;
+          if (isTop) {
+            if (bx < halfB) q1 += val;
+            else q2 += val;
+          } else {
+            if (bx < halfB) q3 += val;
+            else q4 += val;
+          }
+        }
+      }
+
+      const totalPixels = B * B;
+      const quadPixels = totalPixels / 4;
+      const mean = sum / totalPixels;
+      const variance = (sqSum / totalPixels) - (mean * mean);
+
+      if (variance < 6) continue;
+
+      const f1 = q1 / quadPixels;
+      const f2 = q2 / quadPixels;
+      const f3 = q3 / quadPixels;
+      const f4 = q4 / quadPixels;
+
+      const hashKey = (Math.round(mean / 6) << 6) ^ Math.round(Math.sqrt(variance) / 2);
+
+      blocks.push({
+        x: x + halfB,
+        y: y + halfB,
+        f1, f2, f3, f4,
+        hashKey,
+      });
+    }
+  }
+
+  const buckets = new Map();
+  for (let i = 0; i < blocks.length; i++) {
+    const k = blocks[i].hashKey;
+    if (!buckets.has(k)) buckets.set(k, []);
+    buckets.get(k).push(blocks[i]);
+  }
+
+  const matches = [];
+  const shiftBins = new Map();
+
+  for (const [, bucket] of buckets) {
+    if (bucket.length < 2) continue;
+    const len = Math.min(bucket.length, 35);
+    for (let i = 0; i < len; i++) {
+      const b1 = bucket[i];
+      for (let j = i + 1; j < len; j++) {
+        const b2 = bucket[j];
+        const dx = b2.x - b1.x;
+        const dy = b2.y - b1.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist < scaledMinDist) continue;
+
+        const diff = Math.abs(b1.f1 - b2.f1) + Math.abs(b1.f2 - b2.f2) + Math.abs(b1.f3 - b2.f3) + Math.abs(b1.f4 - b2.f4);
+        if (diff > diffThreshold) continue;
+
+        let sx = Math.round(dx / 6) * 6;
+        let sy = Math.round(dy / 6) * 6;
+        let p1 = b1;
+        let p2 = b2;
+        if (sx < 0 || (sx === 0 && sy < 0)) {
+          sx = -sx;
+          sy = -sy;
+          p1 = b2;
+          p2 = b1;
+        }
+
+        const shiftKey = `${sx},${sy}`;
+        const currentCount = (shiftBins.get(shiftKey) || 0) + 1;
+        shiftBins.set(shiftKey, currentCount);
+
+        matches.push({
+          p1,
+          p2,
+          shiftKey,
+        });
+      }
+    }
+  }
+
+  const validShifts = new Set();
+  let maxVotes = 0;
+  let dominantShift = null;
+
+  for (const [key, count] of shiftBins) {
+    if (count >= minVotes) {
+      validShifts.add(key);
+      if (count > maxVotes) {
+        maxVotes = count;
+        dominantShift = key;
+      }
+    }
+  }
+
+  const confirmedClones = matches.filter((m) => validShifts.has(m.shiftKey));
+
+  const scaledClones = confirmedClones.map((c) => ({
+    x1: Math.round(c.p1.x * scale),
+    y1: Math.round(c.p1.y * scale),
+    x2: Math.round(c.p2.x * scale),
+    y2: Math.round(c.p2.y * scale),
+    blockSize: Math.round(B * scale),
+  }));
+
+  return {
+    clones: scaledClones,
+    dominantShift,
+    totalMatches: scaledClones.length,
+    clustersCount: validShifts.size,
+  };
+}
+
 export default function ChannelFilterView({
   imageSrc,
   fileName = 'image',
@@ -61,16 +212,20 @@ export default function ChannelFilterView({
   const [activeFilter, setActiveFilter] = useState('blue');
   const [monochromeChannels, setMonochromeChannels] = useState(true);
   const [edgeBoost, setEdgeBoost] = useState(2);
-  const [selectedBitPlane, setSelectedBitPlane] = useState(0); // 0 (LSB) to 7 (MSB) or 'combined'
-  const [bitTargetChannel, setBitTargetChannel] = useState('lum'); // 'lum', 'red', 'green', 'blue'
-  const [noiseMode, setNoiseMode] = useState('residual'); // 'residual' (amplified) or 'variance' (heatmap)
-  const [noiseGain, setNoiseGain] = useState(12); // 2x to 40x
-  const [noiseWindow, setNoiseWindow] = useState(7); // 5, 7, 11
+  const [selectedBitPlane, setSelectedBitPlane] = useState(0); // 0 to 7 or 'combined'
+  const [bitTargetChannel, setBitTargetChannel] = useState('lum');
+  const [noiseMode, setNoiseMode] = useState('residual');
+  const [noiseGain, setNoiseGain] = useState(12);
+  const [noiseWindow, setNoiseWindow] = useState(7);
+  const [cloneSensitivity, setCloneSensitivity] = useState('medium'); // 'low', 'medium', 'high'
+  const [cloneMinDist, setCloneMinDist] = useState(35); // 25, 35, 60
+  const [showCloneVectors, setShowCloneVectors] = useState(true);
+  const [cloneStats, setCloneStats] = useState(null);
   const [resultUrl, setResultUrl] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const monoToggleId = useId();
 
-  const applyFilter = useCallback((src, filter, mono, boost, bitPlane, bitChan, nMode, nGain, nWin) => {
+  const applyFilter = useCallback((src, filter, mono, boost, bitPlane, bitChan, nMode, nGain, nWin, cSens, cDist, cVec) => {
     if (!src) return;
     setIsProcessing(true);
 
@@ -86,18 +241,92 @@ export default function ChannelFilterView({
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
 
-      const imgData = ctx.getImageData(0, 0, w, h);
-      const data = imgData.data;
-
       const outCanvas = document.createElement('canvas');
       outCanvas.width = w;
       outCanvas.height = h;
       const outCtx = outCanvas.getContext('2d');
+
+      if (filter === 'clones') {
+        const detection = detectCopyMoveClones(canvas, w, h, cSens, cDist);
+        setCloneStats({
+          totalMatches: detection.totalMatches,
+          clustersCount: detection.clustersCount,
+          dominantShift: detection.dominantShift,
+        });
+
+        // Draw background evidence image with dimmed tone
+        outCtx.drawImage(img, 0, 0, w, h);
+        outCtx.fillStyle = 'rgba(2, 6, 23, 0.45)';
+        outCtx.fillRect(0, 0, w, h);
+
+        if (detection.clones.length > 0) {
+          detection.clones.forEach((c) => {
+            const half = Math.floor(c.blockSize / 2);
+
+            // Source block (Neon Cyan)
+            outCtx.fillStyle = 'rgba(6, 182, 212, 0.22)';
+            outCtx.fillRect(c.x1 - half, c.y1 - half, c.blockSize, c.blockSize);
+            outCtx.strokeStyle = '#06b6d4';
+            outCtx.lineWidth = 1.5;
+            outCtx.strokeRect(c.x1 - half, c.y1 - half, c.blockSize, c.blockSize);
+
+            // Target block (Neon Rose)
+            outCtx.fillStyle = 'rgba(244, 63, 94, 0.22)';
+            outCtx.fillRect(c.x2 - half, c.y2 - half, c.blockSize, c.blockSize);
+            outCtx.strokeStyle = '#f43f5e';
+            outCtx.strokeRect(c.x2 - half, c.y2 - half, c.blockSize, c.blockSize);
+
+            // Connecting displacement vector
+            if (cVec) {
+              outCtx.strokeStyle = 'rgba(245, 158, 11, 0.65)';
+              outCtx.lineWidth = 1.5;
+              outCtx.beginPath();
+              outCtx.moveTo(c.x1, c.y1);
+              outCtx.lineTo(c.x2, c.y2);
+              outCtx.stroke();
+
+              // Arrowhead at target (x2, y2)
+              const angle = Math.atan2(c.y2 - c.y1, c.x2 - c.x1);
+              const headLen = Math.max(6, Math.round(c.blockSize / 3.5));
+              outCtx.fillStyle = '#f59e0b';
+              outCtx.beginPath();
+              outCtx.moveTo(c.x2, c.y2);
+              outCtx.lineTo(c.x2 - headLen * Math.cos(angle - Math.PI / 6), c.y2 - headLen * Math.sin(angle - Math.PI / 6));
+              outCtx.lineTo(c.x2 - headLen * Math.cos(angle + Math.PI / 6), c.y2 - headLen * Math.sin(angle + Math.PI / 6));
+              outCtx.closePath();
+              outCtx.fill();
+            }
+          });
+        } else {
+          // No clones detected badge
+          const bw = Math.min(340, w - 20);
+          const bh = 54;
+          outCtx.fillStyle = '#020617ea';
+          outCtx.fillRect((w - bw) / 2, (h - bh) / 2, bw, bh);
+          outCtx.strokeStyle = '#334155';
+          outCtx.lineWidth = 1.5;
+          outCtx.strokeRect((w - bw) / 2, (h - bh) / 2, bw, bh);
+
+          outCtx.fillStyle = '#10b981';
+          outCtx.font = 'bold 13px monospace';
+          outCtx.textAlign = 'center';
+          outCtx.fillText('✓ NO CLONED REGIONS DETECTED', w / 2, (h / 2) - 2);
+          outCtx.fillStyle = '#94a3b8';
+          outCtx.font = '11px monospace';
+          outCtx.fillText('Shift-vector clustering threshold: Clean', w / 2, (h / 2) + 16);
+        }
+
+        setResultUrl(outCanvas.toDataURL('image/png'));
+        setIsProcessing(false);
+        return;
+      }
+
+      const imgData = ctx.getImageData(0, 0, w, h);
+      const data = imgData.data;
       const outImgData = outCtx.createImageData(w, h);
       const outData = outImgData.data;
 
       if (filter === 'edges') {
-        // High-pass Laplacian edge filter
         const gray = new Uint8Array(w * h);
         for (let i = 0, p = 0; i < data.length; i += 4, p++) {
           gray[p] = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
@@ -116,7 +345,6 @@ export default function ChannelFilterView({
           }
         }
       } else if (filter === 'bitplanes') {
-        // Binary Bit-Plane Slicer & LSB Steganalysis
         for (let i = 0; i < data.length; i += 4) {
           const r = data[i];
           const g = data[i + 1];
@@ -130,10 +358,8 @@ export default function ChannelFilterView({
 
           let bitOut;
           if (bitPlane === 'combined') {
-            // Amplify lowest 3 bits (0b000 - 0b111) to fill 0-255 dynamic range
             bitOut = (val & 0b111) * 36;
           } else {
-            // Single bit extraction (0 to 7)
             const bit = (val >> Number(bitPlane)) & 1;
             bitOut = bit ? 255 : 0;
           }
@@ -144,14 +370,11 @@ export default function ChannelFilterView({
           outData[i + 3] = 255;
         }
       } else if (filter === 'noise') {
-        // High-frequency sensor noise extraction & variance mapping
         const gray = new Float32Array(w * h);
         for (let i = 0, p = 0; i < data.length; i += 4, p++) {
-          // Use green/blue or luminance for sensor grain
           gray[p] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
         }
 
-        // Fast 3x3 local mean filter
         const blurred = new Float32Array(w * h);
         for (let y = 0; y < h; y++) {
           const y0 = Math.max(0, y - 1);
@@ -177,7 +400,6 @@ export default function ChannelFilterView({
         }
 
         if (nMode === 'residual') {
-          // Amplified residual centered at neutral mid-gray (128)
           for (let i = 0; i < w * h; i++) {
             const val = Math.round(128 + residual[i] * nGain);
             const clamped = Math.min(255, Math.max(0, val));
@@ -188,7 +410,6 @@ export default function ChannelFilterView({
             outData[outIdx + 3] = 255;
           }
         } else {
-          // Variance heatmap via integral images (Summed-Area Tables)
           const tw = w + 1;
           const sumTable = new Float64Array(tw * (h + 1));
           const sqTable = new Float64Array(tw * (h + 1));
@@ -303,15 +524,17 @@ export default function ChannelFilterView({
   useEffect(() => {
     if (!imageSrc) return;
     const timer = setTimeout(() => {
-      applyFilter(imageSrc, activeFilter, monochromeChannels, edgeBoost, selectedBitPlane, bitTargetChannel, noiseMode, noiseGain, noiseWindow);
+      applyFilter(imageSrc, activeFilter, monochromeChannels, edgeBoost, selectedBitPlane, bitTargetChannel, noiseMode, noiseGain, noiseWindow, cloneSensitivity, cloneMinDist, showCloneVectors);
     }, 0);
     return () => clearTimeout(timer);
-  }, [imageSrc, activeFilter, monochromeChannels, edgeBoost, selectedBitPlane, bitTargetChannel, noiseMode, noiseGain, noiseWindow, applyFilter]);
+  }, [imageSrc, activeFilter, monochromeChannels, edgeBoost, selectedBitPlane, bitTargetChannel, noiseMode, noiseGain, noiseWindow, cloneSensitivity, cloneMinDist, showCloneVectors, applyFilter]);
 
   const exportFilename = activeFilter === 'bitplanes'
     ? `${fileName.replace(/\.[^/.]+$/, '')}_bitplane_${selectedBitPlane}_${bitTargetChannel}.png`
     : activeFilter === 'noise'
     ? `${fileName.replace(/\.[^/.]+$/, '')}_noise_${noiseMode}.png`
+    : activeFilter === 'clones'
+    ? `${fileName.replace(/\.[^/.]+$/, '')}_copy_move_clones.png`
     : `${fileName.replace(/\.[^/.]+$/, '')}_${activeFilter}.png`;
 
   return (
@@ -394,7 +617,7 @@ export default function ChannelFilterView({
                 : 'text-slate-400 hover:text-white hover:bg-slate-800'
             }`}
           >
-            <span>Bit Planes (LSB)</span>
+            <span>Bit Planes</span>
             <span className="text-[10px] bg-purple-400/20 text-purple-200 px-1.5 py-0.2 rounded-full font-bold">
               8-Bit
             </span>
@@ -411,6 +634,20 @@ export default function ChannelFilterView({
             <span>Sensor Noise</span>
             <span className="text-[10px] bg-amber-400/30 text-amber-200 px-1.5 py-0.2 rounded-full font-bold">
               PRNU
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveFilter('clones')}
+            className={`px-3 py-1.5 rounded-lg font-medium transition cursor-pointer flex items-center gap-1.5 ${
+              activeFilter === 'clones'
+                ? 'bg-rose-500 text-white font-semibold shadow-sm shadow-rose-500/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <span>Clone Stamp</span>
+            <span className="text-[10px] bg-rose-400/20 text-rose-200 px-1.5 py-0.2 rounded-full font-bold">
+              Copy-Move
             </span>
           </button>
         </div>
@@ -460,7 +697,6 @@ export default function ChannelFilterView({
       {/* Bit-Plane Specialized Secondary Control Bar */}
       {activeFilter === 'bitplanes' && (
         <div className="w-full bg-slate-950/70 border border-purple-500/30 rounded-xl p-3 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-          {/* Bit-Plane Selector */}
           <div className="flex flex-wrap items-center gap-1">
             <span className="text-slate-400 font-mono text-[11px] mr-1">Plane:</span>
             {[0, 1, 2, 3, 4, 5, 6, 7].map((b) => (
@@ -473,7 +709,6 @@ export default function ChannelFilterView({
                     ? 'bg-purple-500 text-white font-bold shadow-sm shadow-purple-500/40'
                     : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
                 }`}
-                title={b === 0 ? 'Bit 0: Least Significant Bit (LSB) - Steganography Layer' : b === 7 ? 'Bit 7: Most Significant Bit (MSB)' : `Bit ${b}`}
               >
                 {b === 0 ? 'Bit 0 (LSB)' : b === 7 ? 'Bit 7 (MSB)' : `Bit ${b}`}
               </button>
@@ -486,13 +721,11 @@ export default function ChannelFilterView({
                   ? 'bg-purple-500 text-white font-bold shadow-sm shadow-purple-500/40'
                   : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
               }`}
-              title="Combined Bits 0-2 amplified"
             >
               Combined LSBs (0-2)
             </button>
           </div>
 
-          {/* Target Channel for Bit Slicing */}
           <div className="flex items-center gap-1.5 shrink-0">
             <span className="text-slate-400 font-mono text-[11px] mr-1">Target:</span>
             <div className="inline-flex bg-slate-900 border border-slate-800 p-0.5 rounded-lg text-[11px]">
@@ -540,7 +773,6 @@ export default function ChannelFilterView({
       {/* Sensor Noise Specialized Secondary Control Bar */}
       {activeFilter === 'noise' && (
         <div className="w-full bg-slate-950/70 border border-amber-500/30 rounded-xl p-3 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-          {/* Noise Mode Switcher */}
           <div className="flex items-center gap-2">
             <span className="text-slate-400 font-mono text-[11px]">Mode:</span>
             <div className="inline-flex bg-slate-900 border border-slate-800 p-0.5 rounded-lg text-[11px]">
@@ -569,7 +801,6 @@ export default function ChannelFilterView({
             </div>
           </div>
 
-          {/* Sliders / Options */}
           <div className="flex items-center gap-4 text-slate-300">
             {noiseMode === 'residual' ? (
               <div className="flex items-center gap-2">
@@ -604,7 +835,6 @@ export default function ChannelFilterView({
               </div>
             )}
 
-            {/* Heatmap Legend */}
             {noiseMode === 'variance' && (
               <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono text-slate-400 pl-3 border-l border-slate-800">
                 <span className="inline-block w-2.5 h-2.5 rounded-sm bg-indigo-900" title="Low noise / AI inpaint / smoothing" />
@@ -612,10 +842,76 @@ export default function ChannelFilterView({
                 <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-500 ml-1" title="Natural sensor noise" />
                 <span>ISO Grain</span>
                 <span className="inline-block w-2.5 h-2.5 rounded-sm bg-rose-500 ml-1" title="High noise / splice" />
-                <span>Splice Disparity</span>
+                <span>Disparity</span>
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Copy-Move Clone Stamp Secondary Control Bar */}
+      {activeFilter === 'clones' && (
+        <div className="w-full bg-slate-950/70 border border-rose-500/30 rounded-xl p-3 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-400 font-mono text-[11px]">Sensitivity:</span>
+              <div className="inline-flex bg-slate-900 border border-slate-800 p-0.5 rounded-lg text-[11px]">
+                {['low', 'medium', 'high'].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setCloneSensitivity(s)}
+                    className={`px-2.5 py-0.5 rounded capitalize cursor-pointer transition ${
+                      cloneSensitivity === s ? 'bg-rose-500 text-white font-bold' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-400 font-mono text-[11px]">Min Dist:</span>
+              <div className="inline-flex bg-slate-900 border border-slate-800 p-0.5 rounded-lg text-[11px]">
+                {[25, 35, 60].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setCloneMinDist(d)}
+                    className={`px-2 py-0.5 rounded font-mono text-[10px] cursor-pointer transition ${
+                      cloneMinDist === d ? 'bg-rose-500 text-white font-bold' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {d}px
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="flex items-center gap-1.5 cursor-pointer select-none text-slate-300 text-[11px]">
+              <input
+                type="checkbox"
+                checked={showCloneVectors}
+                onChange={(e) => setShowCloneVectors(e.target.checked)}
+                className="accent-rose-500 rounded"
+              />
+              <span>Displacement Vectors</span>
+            </label>
+          </div>
+
+          {cloneStats && (
+            <div className="flex items-center gap-2 font-mono text-[11px] text-slate-400">
+              <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-cyan-300">
+                Matches: <strong>{cloneStats.totalMatches}</strong>
+              </span>
+              {cloneStats.dominantShift && (
+                <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-amber-300">
+                  Shift: <strong>Δ({cloneStats.dominantShift})</strong>
+                </span>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -635,6 +931,8 @@ export default function ChannelFilterView({
             ? noiseMode === 'residual'
               ? 'Amplified Residual: Displays the extracted high-frequency sensor grain centered around mid-gray. AI-inpainted, blurred, or airbrushed regions appear unnaturally smooth and flat, while pasted foreign elements exhibit distinct grain disparity.'
               : 'Variance Heatmap: Computes sliding-window standard deviation of sensor noise. Deep indigo/purple highlights smoothed, cloned, or AI-inpainted areas with zero noise; emerald green represents natural camera ISO sensor grain; crimson red highlights high-variance spliced patches.'
+            : activeFilter === 'clones'
+            ? 'Copy-Move Forgery Detection: Computes spatial block features and clusters displacement vectors (ΔX, ΔY). Cyan boxes mark cloned source regions, rose boxes mark pasted targets, and amber vectors connect matched duplicate patches.'
             : FILTER_DESCRIPTIONS[activeFilter]}
         </span>
       </div>
@@ -644,7 +942,7 @@ export default function ChannelFilterView({
         {isProcessing && (
           <div className="absolute top-3 right-3 bg-slate-950/90 border border-cyan-500/40 text-cyan-300 text-[10px] px-2.5 py-1 rounded-full shadow-lg flex items-center gap-1.5 z-10">
             <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
-            <span>Filtering...</span>
+            <span>Processing...</span>
           </div>
         )}
 
@@ -657,7 +955,7 @@ export default function ChannelFilterView({
             className="max-h-72 sm:max-h-95 md:max-h-115 max-w-full w-auto object-contain rounded-xl border border-slate-800 shadow-xl"
           />
         ) : (
-          <div className="text-xs text-slate-500">Processing channel filter...</div>
+          <div className="text-xs text-slate-500">Processing forensic filter...</div>
         )}
       </div>
     </div>

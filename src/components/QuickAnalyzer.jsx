@@ -406,6 +406,111 @@ export default function QuickAnalyzer() {
       return;
     }
 
+    if (caseType === 'clone') {
+      const grad = ctx.createLinearGradient(0, 0, 640, 400);
+      grad.addColorStop(0, '#0f172a');
+      grad.addColorStop(0.4, '#1e293b');
+      grad.addColorStop(1, '#020617');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 640, 400);
+
+      // Distant terrain hills
+      ctx.fillStyle = '#334155';
+      ctx.beginPath();
+      ctx.arc(160, 440, 200, Math.PI, 0);
+      ctx.fill();
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.arc(480, 440, 220, Math.PI, 0);
+      ctx.fill();
+
+      // Ground plane
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(0, 310, 640, 90);
+
+      // Draw complex surveillance radar tower at (ox, oy)
+      const drawRadarTower = (ox, oy) => {
+        ctx.strokeStyle = '#06b6d4';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(ox - 30, oy + 70);
+        ctx.lineTo(ox, oy - 20);
+        ctx.lineTo(ox + 30, oy + 70);
+        ctx.stroke();
+
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(ox - 20, oy + 40);
+        ctx.lineTo(ox + 20, oy + 40);
+        ctx.moveTo(ox - 15, oy + 15);
+        ctx.lineTo(ox + 15, oy + 15);
+        ctx.stroke();
+
+        ctx.fillStyle = '#f43f5e';
+        ctx.beginPath();
+        ctx.arc(ox, oy - 25, 22, Math.PI * 0.8, Math.PI * 2.2);
+        ctx.fill();
+        ctx.strokeStyle = '#f87171';
+        ctx.stroke();
+
+        ctx.fillStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(ox + 12, oy - 38, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.moveTo(ox, oy - 25);
+        ctx.lineTo(ox + 12, oy - 38);
+        ctx.stroke();
+      };
+
+      // Source object at (170, 210)
+      drawRadarTower(170, 210);
+
+      // Cloned copy duplicated at (450, 210) with shift vector (+280, 0)
+      drawRadarTower(450, 210);
+
+      // Add camera ISO sensor grain across entire image
+      const imgData = ctx.getImageData(0, 0, 640, 400);
+      const d = imgData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const grain = (Math.random() - 0.5) * 16;
+        d[i] = Math.min(255, Math.max(0, d[i] + grain));
+        d[i + 1] = Math.min(255, Math.max(0, d[i + 1] + grain));
+        d[i + 2] = Math.min(255, Math.max(0, d[i + 2] + grain));
+      }
+      ctx.putImageData(imgData, 0, 0);
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.94);
+      setFileName('cloned_surveillance_radar.jpg');
+      setFileDetails({
+        size: '72.4 KB',
+        type: 'image/jpeg',
+        lastModified: new Date().toLocaleDateString(),
+      });
+      setExifData({
+        hasExif: true,
+        make: 'FLIR Systems',
+        model: 'Recon-V Tactical Surveillance',
+        software: 'Adobe Photoshop 2026 (Clone Stamp Modified)',
+        dateTimeOriginal: new Date().toLocaleDateString(),
+        iso: 400,
+        fNumber: 'f/4.0',
+        exposureTime: '1/500s',
+      });
+      setImageSrc(dataUrl);
+      setLoadVersion((v) => v + 1);
+
+      fetch(dataUrl)
+        .then((res) => res.arrayBuffer())
+        .then(computeFileHashes)
+        .then(setHashes);
+
+      setViewMode('channels');
+      return;
+    }
+
     // Default: Spliced Document & ELA Tamper
     const grad = ctx.createLinearGradient(0, 0, 640, 400);
     grad.addColorStop(0, '#0f172a');
@@ -528,6 +633,149 @@ export default function QuickAnalyzer() {
       }, mime, quality);
     };
     img.src = imageSrc;
+  };
+
+  // Generate and export publication-ready 3-panel evidence montage plate
+  const generateCompositePlate = () => {
+    if (!imageSrc || !elaResultUrl) return;
+
+    const imgA = new Image();
+    imgA.crossOrigin = 'anonymous';
+    imgA.onload = () => {
+      const imgB = new Image();
+      imgB.crossOrigin = 'anonymous';
+      imgB.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = 1920;
+        c.height = 1080;
+        const g = c.getContext('2d');
+
+        // Dark slate background
+        g.fillStyle = '#020617';
+        g.fillRect(0, 0, 1920, 1080);
+
+        // Header Title Bar
+        g.fillStyle = '#0f172a';
+        g.fillRect(0, 0, 1920, 110);
+        g.strokeStyle = '#06b6d4';
+        g.lineWidth = 3;
+        g.beginPath();
+        g.moveTo(0, 110);
+        g.lineTo(1920, 110);
+        g.stroke();
+
+        // Header Text
+        g.fillStyle = '#06b6d4';
+        g.font = 'bold 15px monospace';
+        g.fillText('OFFICIAL FORENSIC EXAMINATION DOSSIER • PLATFORM: forensic.dpdns.org', 50, 42);
+
+        g.fillStyle = '#ffffff';
+        g.font = 'bold 28px system-ui, sans-serif';
+        g.fillText(`AUTHENTICITY VERIFICATION PLATE: ${fileName || 'EXAMINATION'}`, 50, 85);
+
+        const timestampStr = new Date().toISOString();
+        g.fillStyle = '#94a3b8';
+        g.font = '14px monospace';
+        g.textAlign = 'right';
+        g.fillText(`EXAM DATE: ${timestampStr.slice(0, 10)} ${timestampStr.slice(11, 19)} UTC`, 1870, 50);
+        g.fillText(`SHA-256: ${(hashes.sha256 || 'CALCULATING').slice(0, 32)}...`, 1870, 82);
+        g.textAlign = 'left';
+
+        // 3 Visual Evidence Panels
+        const panelY = 140;
+        const panelH = 780;
+        const panelW = 570;
+        const marginX = 50;
+        const gapX = 55;
+
+        const drawPanel = (image, title, sub, xPos) => {
+          g.fillStyle = '#0b0f19';
+          g.fillRect(xPos, panelY, panelW, panelH);
+          g.strokeStyle = '#1e293b';
+          g.lineWidth = 1.5;
+          g.strokeRect(xPos, panelY, panelW, panelH);
+
+          g.fillStyle = '#0f172a';
+          g.fillRect(xPos, panelY, panelW, 46);
+          g.fillStyle = '#38bdf8';
+          g.font = 'bold 15px monospace';
+          g.fillText(title, xPos + 16, panelY + 28);
+
+          const iw = image.naturalWidth || image.width;
+          const ih = image.naturalHeight || image.height;
+          const maxImgW = panelW - 32;
+          const maxImgH = panelH - 120;
+          const imgScale = Math.min(maxImgW / iw, maxImgH / ih);
+          const rw = Math.round(iw * imgScale);
+          const rh = Math.round(ih * imgScale);
+          const rx = xPos + Math.round((panelW - rw) / 2);
+          const ry = panelY + 60 + Math.round((maxImgH - rh) / 2);
+
+          g.drawImage(image, rx, ry, rw, rh);
+          g.strokeStyle = '#334155';
+          g.lineWidth = 1;
+          g.strokeRect(rx, ry, rw, rh);
+
+          g.fillStyle = '#0f172a';
+          g.fillRect(xPos, panelY + panelH - 44, panelW, 44);
+          g.fillStyle = '#94a3b8';
+          g.font = '12px monospace';
+          g.fillText(sub, xPos + 16, panelY + panelH - 17);
+        };
+
+        const finishExport = () => {
+          g.fillStyle = '#0f172a';
+          g.fillRect(0, 1080 - 60, 1920, 60);
+          g.strokeStyle = '#1e293b';
+          g.lineWidth = 1;
+          g.beginPath();
+          g.moveTo(0, 1080 - 60);
+          g.lineTo(1920, 1080 - 60);
+          g.stroke();
+
+          g.fillStyle = '#06b6d4';
+          g.font = 'bold 13px monospace';
+          g.fillText('🔒 CHAIN OF CUSTODY VERIFIED: 100% CLIENT-SIDE IN-MEMORY EXECUTION (ZERO-KNOWLEDGE)', 50, 1080 - 24);
+
+          g.fillStyle = '#94a3b8';
+          g.font = '13px monospace';
+          g.textAlign = 'right';
+          g.fillText(`SHA-256: ${hashes.sha256 || 'COMPUTED'}`, 1870, 1080 - 24);
+          g.textAlign = 'left';
+
+          const dataUrl = c.toDataURL('image/png');
+          const a = document.createElement('a');
+          const base = fileName.replace(/\.[^/.]+$/, '') || 'forensic';
+          a.href = dataUrl;
+          a.download = `${base}_composite_evidence_board.png`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        };
+
+        // Panel 1: Original Source
+        drawPanel(imgA, 'PLATE A: SOURCE EVIDENCE', `FILE: ${fileName} • ${imgA.naturalWidth}x${imgA.naturalHeight} px`, marginX);
+
+        // Panel 2: ELA Difference Map
+        drawPanel(imgB, 'PLATE B: ERROR LEVEL ANALYSIS', `RESAVE: ${Math.round(jpegQuality * 100)}% • AMP: ${elaScale}x`, marginX + panelW + gapX);
+
+        // Panel 3: Annotated Plate or ELA Contrast Plate
+        if (annotatedPlateUrl) {
+          const imgC = new Image();
+          imgC.crossOrigin = 'anonymous';
+          imgC.onload = () => {
+            drawPanel(imgC, 'PLATE C: ANNOTATED FINDINGS', `EXAMINER MARKINGS: ${annotations.length} ENTRIES`, marginX + (panelW + gapX) * 2);
+            finishExport();
+          };
+          imgC.src = annotatedPlateUrl;
+        } else {
+          drawPanel(imgB, 'PLATE C: ELA HEATMAP DETAIL', 'IN-BROWSER CLIENT VERIFIED RETENTION', marginX + (panelW + gapX) * 2);
+          finishExport();
+        }
+      };
+      imgB.src = elaResultUrl;
+    };
+    imgA.src = imageSrc;
   };
 
   // Split comparison drag calculation
@@ -690,6 +938,20 @@ export default function QuickAnalyzer() {
                     Simulated camera sensor grain with zero-noise inpainting and spliced patch.
                   </p>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => loadSampleCase('clone')}
+                  className="w-full text-left p-2 rounded-lg hover:bg-slate-800 transition cursor-pointer text-xs group"
+                >
+                  <div className="font-semibold text-cyan-400 flex items-center justify-between">
+                    <span>👥 Copy-Move Cloned Object</span>
+                    <span className="text-[10px] text-cyan-300/80 font-mono">Clone Stamp</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Surveillance station with duplicated radar tower & shift vectors.
+                  </p>
+                </button>
               </div>
             )}
           </div>
@@ -725,6 +987,16 @@ export default function QuickAnalyzer() {
               title="Generate printable forensic dossier with cryptographic SHA-256 and MD5 hashes"
             >
               <span>📑 Case Report</span>
+            </button>
+          )}
+          {imageSrc && elaResultUrl && (
+            <button
+              type="button"
+              onClick={generateCompositePlate}
+              className="flex-1 sm:flex-initial text-xs bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-400/50 text-cyan-200 font-medium px-3.5 sm:px-4 py-2.5 rounded-xl transition cursor-pointer text-center flex items-center justify-center gap-1.5 shadow-sm"
+              title="Download publication-ready 3-panel evidence montage plate (1920x1080) with cryptographic hash banner"
+            >
+              <span>📸 Evidence Plate ↓</span>
             </button>
           )}
           <input

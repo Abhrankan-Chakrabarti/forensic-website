@@ -45,6 +45,19 @@ A modern, high-performance web portal and client-side forensic inspection suite 
   2. **LSB Steganography Payload**: Real classified text payload (`★ CLASSIFIED FORENSIC INTEL ★`) concealed within Bit 0.
   3. **EXIF Metadata Spoof**: Camera firmware signatures modified with Adobe Photoshop tracking flags.
   4. **AI Inpaint & Sensor Noise Disparity**: Diffusion-inpainted zero-noise region alongside a high-frequency spliced patch.
+  5. **Copy-Move Cloned Object**: Surveillance post featuring duplicated radar tower geometry and shift vector.
+
+### 👥 Copy-Move (Clone Stamp) Forgery Detection
+- Identifies duplicated image regions created via clone-stamp, healing brush, or copy-paste operations to replicate or erase objects.
+- Spatial block feature extraction with $O(N \log N)$ hash-bucket matching and shift-vector clustering.
+- Displays duplicate source regions in **Neon Cyan** and pasted targets in **Neon Rose**.
+- Plots directional displacement vectors connecting corresponding duplicate block centroids with live $(\Delta X, \Delta Y)$ shift telemetry.
+- Configurable match sensitivity (`Low`, `Medium`, `High`) and spatial Euclidean separation thresholds (25px–60px).
+
+### 📸 High-Resolution Composite Evidence Plate Generator
+- One-click generator exporting a publication-ready 1920×1080 3-panel forensic montage board (`Plate A: Source | Plate B: ELA Heatmap | Plate C: Annotated Findings`).
+- Stamped with official case title bar, SHA-256 evidence hash, EXIF capture credentials, and UTC timestamp.
+- Direct download ready for inclusion in intelligence briefs, court exhibits, or OSINT reports.
 
 ### 📡 Sensor Noise & PRNU Inconsistency Analysis
 - Spatial high-frequency sensor noise extraction via 3x3 local mean residual ($Y - \bar{Y}$).
