@@ -8,6 +8,31 @@ function getCompassHeading(degrees) {
   return `${norm.toFixed(1)}° (${headings[idx]})`;
 }
 
+// Clamps (x, y) coordinates to image boundary rectangle [pad, w - pad] x [pad, h - pad]
+function clampToBoundary(x, y, w, h, pad = 24) {
+  const cx = w / 2;
+  const cy = h / 2;
+  const dx = x - cx;
+  const dy = y - cy;
+
+  if (x >= pad && x <= w - pad && y >= pad && y <= h - pad) {
+    return { isInside: true, bx: x, by: y, dist: 0 };
+  }
+
+  const halfW = (w / 2) - pad;
+  const halfH = (h / 2) - pad;
+
+  const scaleX = Math.abs(dx) > 0 ? halfW / Math.abs(dx) : Infinity;
+  const scaleY = Math.abs(dy) > 0 ? halfH / Math.abs(dy) : Infinity;
+  const scale = Math.min(scaleX, scaleY);
+
+  const bx = cx + dx * scale;
+  const by = cy + dy * scale;
+  const dist = Math.hypot(x - bx, y - by);
+
+  return { isInside: false, bx, by, dist: Math.round(dist) };
+}
+
 export default function ShadowConsistencyView({
   imageSrc,
   fileName = 'evidence',
@@ -21,27 +46,28 @@ export default function ShadowConsistencyView({
   const [imgDimensions, setImgDimensions] = useState({ w: 800, h: 600 });
   const [probeGradients, setProbeGradients] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [stageScale, setStageScale] = useState(1.0); // 1.0 (Fit), 0.65 (Wide), 0.45 (Horizon)
 
   const containerRef = useRef(null);
   const imageCanvasRef = useRef(null);
   const infiniteLinesId = useId();
   const compassToggleId = useId();
 
-  // Shadow Rays State
+  // Shadow Rays State (Default aligned to converge visibly near top-center at (0.50, 0.10))
   const [rays, setRays] = useState([
     {
       id: 'ray1',
       label: 'Ray 1 (Suspect Subject)',
       color: '#38bdf8', // Neon Cyan
       caster: { x: 0.35, y: 0.40 },
-      tip: { x: 0.46, y: 0.72 },
+      tip: { x: 0.20, y: 0.70 },
     },
     {
       id: 'ray2',
       label: 'Ray 2 (Reference Object)',
       color: '#f59e0b', // Neon Amber
-      caster: { x: 0.65, y: 0.38 },
-      tip: { x: 0.75, y: 0.70 },
+      caster: { x: 0.65, y: 0.40 },
+      tip: { x: 0.80, y: 0.70 },
     },
   ]);
 
@@ -196,11 +222,17 @@ export default function ShadowConsistencyView({
       verdictBadge = 'bg-amber-500/20 text-amber-300 border-amber-500/30';
     }
 
+    let vlClamped = null;
+    if (vanishingPoint) {
+      vlClamped = clampToBoundary(vanishingPoint.x, vanishingPoint.y, w, h, 28);
+    }
+
     return {
       computedRays,
       maxAngleDiff: Number(maxAngleDiff.toFixed(1)),
       intersections,
       vanishingPoint,
+      vlClamped,
       verdict,
       verdictColor,
       verdictBadge,
@@ -329,14 +361,14 @@ export default function ShadowConsistencyView({
         label: 'Ray 1 (Suspect Subject)',
         color: '#38bdf8',
         caster: { x: 0.35, y: 0.40 },
-        tip: { x: 0.46, y: 0.72 },
+        tip: { x: 0.20, y: 0.70 },
       },
       {
         id: 'ray2',
         label: 'Ray 2 (Reference Object)',
         color: '#f59e0b',
-        caster: { x: 0.65, y: 0.38 },
-        tip: { x: 0.75, y: 0.70 },
+        caster: { x: 0.65, y: 0.40 },
+        tip: { x: 0.80, y: 0.70 },
       },
     ]);
   };
@@ -629,6 +661,28 @@ export default function ShadowConsistencyView({
             />
             <span>Compass HUD</span>
           </label>
+
+          {mode === 'rays' && (
+            <div className="flex items-center gap-1 bg-slate-950 border border-slate-800 p-0.5 rounded-lg text-[11px]">
+              <span className="text-slate-500 font-mono text-[10px] px-1.5 hidden md:inline">Perspective:</span>
+              {[
+                { id: 1.0, label: '1x Fit' },
+                { id: 0.65, label: '0.65x Wide' },
+                { id: 0.45, label: '0.45x Horizon' },
+              ].map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setStageScale(s.id)}
+                  className={`px-2 py-0.5 rounded cursor-pointer transition ${
+                    stageScale === s.id ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Export Button */}
@@ -643,10 +697,15 @@ export default function ShadowConsistencyView({
       </div>
 
       {/* Main Interactive Stage */}
-      <div className="relative w-full flex items-center justify-center bg-slate-950/90 border border-slate-800 rounded-2xl p-4 overflow-hidden select-none">
+      <div className="relative w-full flex items-center justify-center bg-slate-950/90 border border-slate-800 rounded-2xl p-4 sm:p-8 overflow-hidden select-none min-h-[55vh]">
         <div
           ref={containerRef}
-          className="relative inline-block max-w-full max-h-[72vh] touch-none cursor-crosshair shadow-2xl rounded-xl overflow-hidden"
+          style={{
+            transform: `scale(${stageScale})`,
+            transformOrigin: 'center center',
+            transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+          className="relative inline-block max-w-full max-h-[72vh] touch-none cursor-crosshair shadow-2xl rounded-xl"
         >
           {/* Base Evidence Image */}
           <img
@@ -700,21 +759,118 @@ export default function ShadowConsistencyView({
 
                 {/* Vanishing Point Target Reticle */}
                 {rayGeometry.vanishingPoint && (
-                  <g>
+                  <g key="vl-target-beacon">
+                    {/* Glowing outer halo */}
                     <circle
                       cx={`${(rayGeometry.vanishingPoint.x / (imgDimensions.w || 1)) * 100}%`}
                       cy={`${(rayGeometry.vanishingPoint.y / (imgDimensions.h || 1)) * 100}%`}
-                      r="12"
-                      fill="none"
+                      r="22"
+                      fill="rgba(234, 179, 8, 0.2)"
+                      stroke="#eab308"
+                      strokeWidth="2"
+                      strokeDasharray="4 3"
+                    />
+                    {/* Crosshairs */}
+                    <line
+                      x1={`${((rayGeometry.vanishingPoint.x - 16) / (imgDimensions.w || 1)) * 100}%`}
+                      y1={`${(rayGeometry.vanishingPoint.y / (imgDimensions.h || 1)) * 100}%`}
+                      x2={`${((rayGeometry.vanishingPoint.x + 16) / (imgDimensions.w || 1)) * 100}%`}
+                      y2={`${(rayGeometry.vanishingPoint.y / (imgDimensions.h || 1)) * 100}%`}
+                      stroke="#ffffff"
+                      strokeWidth="2"
+                    />
+                    <line
+                      x1={`${(rayGeometry.vanishingPoint.x / (imgDimensions.w || 1)) * 100}%`}
+                      y1={`${((rayGeometry.vanishingPoint.y - 16) / (imgDimensions.h || 1)) * 100}%`}
+                      x2={`${(rayGeometry.vanishingPoint.x / (imgDimensions.w || 1)) * 100}%`}
+                      y2={`${((rayGeometry.vanishingPoint.y + 16) / (imgDimensions.h || 1)) * 100}%`}
+                      stroke="#ffffff"
+                      strokeWidth="2"
+                    />
+                    {/* Golden core */}
+                    <circle
+                      cx={`${(rayGeometry.vanishingPoint.x / (imgDimensions.w || 1)) * 100}%`}
+                      cy={`${(rayGeometry.vanishingPoint.y / (imgDimensions.h || 1)) * 100}%`}
+                      r="6"
+                      fill="#fde047"
+                      stroke="#020617"
+                      strokeWidth="1.5"
+                    />
+                    {/* High-visibility badge */}
+                    <rect
+                      x={`${(rayGeometry.vanishingPoint.x / (imgDimensions.w || 1)) * 100}%`}
+                      y={`${(rayGeometry.vanishingPoint.y / (imgDimensions.h || 1)) * 100}%`}
+                      transform="translate(14, -14)"
+                      width="156"
+                      height="26"
+                      rx="6"
+                      fill="#020617f4"
+                      stroke="#eab308"
+                      strokeWidth="1.5"
+                    />
+                    <text
+                      x={`${(rayGeometry.vanishingPoint.x / (imgDimensions.w || 1)) * 100}%`}
+                      y={`${(rayGeometry.vanishingPoint.y / (imgDimensions.h || 1)) * 100}%`}
+                      transform="translate(22, 3)"
+                      fill="#fef08a"
+                      fontSize="11"
+                      fontFamily="monospace"
+                      fontWeight="bold"
+                    >
+                      ☀️ VL ({rayGeometry.vanishingPoint.x.toFixed(0)}, {rayGeometry.vanishingPoint.y.toFixed(0)})
+                    </text>
+                  </g>
+                )}
+
+                {/* Edge Radar Tracker when VL is outside the image bounds */}
+                {rayGeometry.vanishingPoint && rayGeometry.vlClamped && !rayGeometry.vlClamped.isInside && (
+                  <g key="vl-edge-beacon">
+                    <line
+                      x1={`${(rayGeometry.vlClamped.bx / (imgDimensions.w || 1)) * 100}%`}
+                      y1={`${(rayGeometry.vlClamped.by / (imgDimensions.h || 1)) * 100}%`}
+                      x2={`${(rayGeometry.vanishingPoint.x / (imgDimensions.w || 1)) * 100}%`}
+                      y2={`${(rayGeometry.vanishingPoint.y / (imgDimensions.h || 1)) * 100}%`}
+                      stroke="#eab308"
+                      strokeWidth="2"
+                      strokeDasharray="4 4"
+                      opacity="0.85"
+                    />
+                    <circle
+                      cx={`${(rayGeometry.vlClamped.bx / (imgDimensions.w || 1)) * 100}%`}
+                      cy={`${(rayGeometry.vlClamped.by / (imgDimensions.h || 1)) * 100}%`}
+                      r="14"
+                      fill="#020617ee"
                       stroke="#eab308"
                       strokeWidth="2"
                     />
                     <circle
-                      cx={`${(rayGeometry.vanishingPoint.x / (imgDimensions.w || 1)) * 100}%`}
-                      cy={`${(rayGeometry.vanishingPoint.y / (imgDimensions.h || 1)) * 100}%`}
-                      r="3"
-                      fill="#fef08a"
+                      cx={`${(rayGeometry.vlClamped.bx / (imgDimensions.w || 1)) * 100}%`}
+                      cy={`${(rayGeometry.vlClamped.by / (imgDimensions.h || 1)) * 100}%`}
+                      r="5"
+                      fill="#facc15"
                     />
+                    <rect
+                      x={`${(rayGeometry.vlClamped.bx / (imgDimensions.w || 1)) * 100}%`}
+                      y={`${(rayGeometry.vlClamped.by / (imgDimensions.h || 1)) * 100}%`}
+                      transform="translate(18, -14)"
+                      width="196"
+                      height="26"
+                      rx="6"
+                      fill="#020617fa"
+                      stroke="#eab308"
+                      strokeWidth="1.5"
+                    />
+                    <text
+                      x={`${(rayGeometry.vlClamped.bx / (imgDimensions.w || 1)) * 100}%`}
+                      y={`${(rayGeometry.vlClamped.by / (imgDimensions.h || 1)) * 100}%`}
+                      transform="translate(26, 3)"
+                      fill="#fef08a"
+                      fontSize="10"
+                      fontFamily="monospace"
+                      fontWeight="bold"
+                    >
+                      📍 VL: {rayGeometry.vlClamped.dist}px off-screen
+                    </text>
                   </g>
                 )}
               </>
@@ -891,13 +1047,29 @@ export default function ShadowConsistencyView({
             </div>
 
             {rayGeometry.vanishingPoint && (
-              <div className="text-[11px] text-slate-400 pt-1 flex items-center justify-between">
-                <span>
-                  Estimated Light Vanishing Point ($V_L$):{' '}
-                  <strong className="text-yellow-400">
-                    ({rayGeometry.vanishingPoint.x.toFixed(1)}, {rayGeometry.vanishingPoint.y.toFixed(1)})
-                  </strong>
-                </span>
+              <div className="text-[11px] text-slate-400 pt-1 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span>
+                    Estimated Light Vanishing Point (V<sub>L</sub>):{' '}
+                    <strong className="text-yellow-400">
+                      ({rayGeometry.vanishingPoint.x.toFixed(1)}, {rayGeometry.vanishingPoint.y.toFixed(1)})
+                    </strong>
+                  </span>
+                  {rayGeometry.vlClamped && !rayGeometry.vlClamped.isInside && (
+                    <span className="text-amber-400 font-semibold text-[10px] bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded">
+                      Off-screen by {rayGeometry.vlClamped.dist}px
+                    </span>
+                  )}
+                  {rayGeometry.vlClamped && !rayGeometry.vlClamped.isInside && stageScale === 1.0 && (
+                    <button
+                      type="button"
+                      onClick={() => setStageScale(0.65)}
+                      className="text-[10px] px-2 py-0.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded transition cursor-pointer"
+                    >
+                      🔍 Fit V<sub>L</sub> on Stage
+                    </button>
+                  )}
+                </div>
                 <span className="text-slate-500 text-[10px]">
                   {rayGeometry.intersections.length} pairwise ray intersections computed
                 </span>
