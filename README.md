@@ -216,14 +216,15 @@ forensic-website/
 │   └── og-preview.png           # OpenGraph & social preview banner (1200x630)
 ├── src/
 │   ├── components/
-│   │   ├── ChannelFilterView.jsx       # In-browser channel isolator, 8-bit plane steganalysis & sensor noise analysis
+│   │   ├── ChannelFilterView.jsx       # Channel isolator, 2D FFT spatial spectrum, 8-bit steganalysis, PRNU noise & clone detection
 │   │   ├── DualImageComparator.jsx     # Dual-image diff comparator & neon crimson delta heatmap
 │   │   ├── ForensicAnnotationOverlay.jsx # Interactive forensic annotation suite, calipers & bounding box markers
 │   │   ├── ForensicLoupe.jsx           # Real-time integer-sampled pixel loupe (2x–16x) with RGB/HEX/XY reticle
 │   │   ├── ForensicReportModal.jsx     # Case dossier modal with print/PDF & JSON audit export
 │   │   ├── Histogram.jsx              # Real-time RGB and luminance distribution visualizer
 │   │   ├── MaatLens.jsx               # The Ma'at Lens: Ancient Egyptian Canon of Proportions analyzer
-│   │   └── QuickAnalyzer.jsx          # Tabbed quick inspector (Single ELA & Dual Comparator)
+│   │   ├── QuickAnalyzer.jsx          # Tabbed quick inspector (Single ELA & Dual Comparator)
+│   │   └── ShadowConsistencyView.jsx  # Lighting & shadow consistency analyzer with vanishing ray projections & surface luminance probes
 │   ├── utils/
 │   │   ├── cryptoUtils.js         # Hardware-accelerated SHA-256 and pure-JS MD5 hashing
 │   │   └── exifParser.js          # Zero-dependency JPEG EXIF parser & software detector
@@ -254,10 +255,10 @@ flowchart LR
     E --> G["Gunicorn / Flask Backend\n(pixel.forensic.dpdns.org)"]
 ```
 
-The platform is deployed across a dual-host architecture on AWS EC2:
-- **Main Portal (`forensic.dpdns.org`)**: Built by GitHub Actions on push to `main` and committed to an orphaned `build` branch containing only optimized static distribution assets served by Nginx.
-- **Pixel Forensics Workbench (`pixel.forensic.dpdns.org`)**: Hosts 44 deep-forensic algorithms running inside Python/Flask on AWS Graviton2 ARM64.
-- **Host Sync Command**: Updates to the production instances are synchronized in one command:
+The platform is deployed across a dual-host architecture on AWS EC2 (Amazon Linux 2023 on Graviton2 ARM64):
+- **Main Portal (`forensic.dpdns.org`)**: Built by GitHub Actions on push to `main` and committed to an orphaned `build` branch containing only optimized static distribution assets served directly by Nginx.
+- **Pixel Forensics Workbench (`pixel.forensic.dpdns.org`)**: Hosts 44 deep-forensic algorithms running inside Python/Flask/Gunicorn on AWS Graviton2 ARM64, protected by Nginx reverse proxy rate-limiting (120 req/min, burst 30) with trusted proxy client isolation.
+- **Host Sync Command**: Updates to both production instances are synchronized in one step via fish shell:
   ```fish
   update-all
   ```
