@@ -8,6 +8,7 @@ import ForensicReportModal from './ForensicReportModal.jsx';
 import ForensicLoupe from './ForensicLoupe.jsx';
 import ForensicAnnotationOverlay from './ForensicAnnotationOverlay.jsx';
 import MaatLens from './MaatLens.jsx';
+import ShadowConsistencyView from './ShadowConsistencyView.jsx';
 
 export default function QuickAnalyzer() {
   const [activeTab, setActiveTab] = useState('single'); // 'single' (ELA/EXIF) or 'dual' (Diff Comparator)
@@ -1305,10 +1306,19 @@ export default function QuickAnalyzer() {
               >
                 <span>𓌴 Ma&apos;at Lens</span>
               </button>
+              <button
+                onClick={() => setViewMode('lighting')}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg transition cursor-pointer shrink-0 text-center flex-1 sm:flex-initial flex items-center justify-center gap-1.5 ${
+                  viewMode === 'lighting' ? 'bg-amber-500 text-slate-950 font-bold shadow-sm shadow-amber-500/20' : 'text-slate-400 hover:text-white'
+                }`}
+                title="Lighting & Shadow Consistency Analyzer: Vanishing Light Ray Projections"
+              >
+                <span>☀️ Shadow & Light</span>
+              </button>
             </div>
 
             {/* Sliders (shown for ELA modes) */}
-            {viewMode !== 'channels' && viewMode !== 'annotate' && viewMode !== 'maat' && (
+            {viewMode !== 'channels' && viewMode !== 'annotate' && viewMode !== 'maat' && viewMode !== 'lighting' && (
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-6 text-xs text-slate-300 w-full lg:w-auto">
                 <div className="flex items-center justify-between sm:justify-start gap-3 bg-slate-900/40 sm:bg-transparent p-2 sm:p-0 rounded-lg">
                   <span className="shrink-0">Amplification: <strong>{elaScale}x</strong></span>
@@ -1339,7 +1349,7 @@ export default function QuickAnalyzer() {
             )}
 
             {/* Pixel Loupe Magnifier Control */}
-            {viewMode !== 'annotate' && viewMode !== 'maat' && (
+            {viewMode !== 'annotate' && viewMode !== 'maat' && viewMode !== 'lighting' && (
               <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-xl text-xs w-full sm:w-auto justify-between sm:justify-start">
                 <button
                   type="button"
@@ -1389,6 +1399,12 @@ export default function QuickAnalyzer() {
           <div className="bg-slate-950/80 border border-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 overflow-hidden flex justify-center items-center min-h-60 sm:min-h-80 select-none">
             {viewMode === 'maat' ? (
               <MaatLens
+                imageSrc={imageSrc}
+                fileName={fileName}
+                onExportPlate={(dataUrl) => setAnnotatedPlateUrl(dataUrl)}
+              />
+            ) : viewMode === 'lighting' ? (
+              <ShadowConsistencyView
                 imageSrc={imageSrc}
                 fileName={fileName}
                 onExportPlate={(dataUrl) => setAnnotatedPlateUrl(dataUrl)}

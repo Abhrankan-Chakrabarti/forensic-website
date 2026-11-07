@@ -86,6 +86,7 @@ export default function ForensicWebsite() {
     'Pixel-Level Investigation & Bit-Planes',
     'Sensor Noise & PRNU Inconsistency',
     '2D FFT Spatial Frequency & Resampling Spectrum',
+    'Lighting & Shadow Consistency Analyzer (Vanishing Light Rays)',
     'The Ma\'at Lens (Ancient Egyptian Canon Forensics)',
     'Real-time Color & Luminance Histogram',
     'Forensic Case Dossier & Evidence Board Export'

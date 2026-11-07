@@ -80,6 +80,18 @@ A modern, high-performance web portal and client-side forensic inspection suite 
 - **Color Palettes**: Features *Inferno Heatmap*, *Cyan Radar*, and *Matrix B&W* with dynamic range logarithmic boost slider (1x–5x).
 - **Hann Windowing**: Suppresses boundary discontinuity edge leakage (crosshairs along DC axes) to isolate genuine texture periodicity.
 
+### ☀️ Lighting & Shadow Consistency Analyzer (Vanishing Light Rays)
+- Interactive projective geometry and physical illuminant estimator for detecting spliced subjects and multi-light composite forgeries.
+- **Cast Shadow Vanishing Rays Mode**:
+  - Drag caster object coordinates and shadow tip points across multiple independent subjects or reference pillars.
+  - Computes pairwise 2D line equations $ax + by + c = 0$ and extrapolates backward/forward projection rays to locate the **Vanishing Point of Light ($V_L$)**.
+  - Measures angular ray disparity $\Delta\theta$ with real-time classification: *Consistent Light Source* ($\Delta\theta \le 5^\circ$) vs. *Spliced Shadow Geometry* ($\Delta\theta > 12^\circ$).
+- **Surface Luminance Gradient Probes Mode**:
+  - Dual circular probes ($15\text{px}$–$45\text{px}$ radius) dropped on curved surfaces (e.g. suspect face vs. reference object).
+  - Computes local 2D weighted luminance gradient vectors $\nabla I = (\partial I / \partial x, \partial I / \partial y)$ to identify dominant key-light angle and 16-point compass heading (e.g. `135° SE`).
+  - Flags conflicting key-lights when surface illumination disparity exceeds $35^\circ$.
+- **Plate Export**: High-resolution 1-click forensic plate download stamped with projected vanishing rays, intersection markers, compass rose, and official verdict.
+
 ### 📡 Sensor Noise & PRNU Inconsistency Analysis
 - Spatial high-frequency sensor noise extraction via 3x3 local mean residual ($Y - \bar{Y}$).
 - **Amplified Residual**: Amplifies high-frequency grain centered at mid-gray (128) with 4x–35x gain. AI-inpainted, blurred, or airbrushed regions appear unnaturally flat and smooth, while spliced foreign elements exhibit distinct grain disparity.
