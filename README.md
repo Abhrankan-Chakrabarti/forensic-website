@@ -71,6 +71,15 @@ A modern, high-performance web portal and client-side forensic inspection suite 
 - Stamped with official case title bar, SHA-256 evidence hash, EXIF capture credentials, and UTC timestamp.
 - Direct download ready for inclusion in intelligence briefs, court exhibits, or OSINT reports.
 
+### 🌐 2D Fast Fourier Transform (FFT) Spatial Frequency & Resampling Spectrum
+- 100% in-browser, high-performance Radix-2 Cooley-Tukey 2D FFT computation on $512 \times 512$ pixel matrices in under 50ms.
+- **Centered Frequency Display (FFT-Shift)**: DC component centered at $(256, 256)$ with concentric circular frequency rings ($0.1, 0.2, 0.3, 0.4\text{ cy/px}$).
+- **Periodic Harmonic & Resampling Lattice Detection**: Scans the 2D magnitude spectrum for off-axis local maxima exceeding $P(r) + 3.2\sigma(r)$, pinpointing periodic interpolation lattices, JPEG block grid multiples, and GAN upsampling artifacts.
+- **Telemetry Readouts**: Live readouts for spatial wavelength ($\lambda\text{ px}$), frequency ($f\text{ cy/px}$), and Signal-to-Noise Ratio (SNR) with automated targeting reticles.
+- **Azimuthal Radial Decay ($\beta$)**: Fits the power law $P(r) \propto 1/r^\beta$ across mid-range frequencies. Distinguishes authentic natural sensor decay ($\beta \approx 1.8–2.2$) from synthetic/AI generative smoothing ($\beta > 2.35$) and foreign additive noise ($\beta < 1.65$).
+- **Color Palettes**: Features *Inferno Heatmap*, *Cyan Radar*, and *Matrix B&W* with dynamic range logarithmic boost slider (1x–5x).
+- **Hann Windowing**: Suppresses boundary discontinuity edge leakage (crosshairs along DC axes) to isolate genuine texture periodicity.
+
 ### 📡 Sensor Noise & PRNU Inconsistency Analysis
 - Spatial high-frequency sensor noise extraction via 3x3 local mean residual ($Y - \bar{Y}$).
 - **Amplified Residual**: Amplifies high-frequency grain centered at mid-gray (128) with 4x–35x gain. AI-inpainted, blurred, or airbrushed regions appear unnaturally flat and smooth, while spliced foreign elements exhibit distinct grain disparity.

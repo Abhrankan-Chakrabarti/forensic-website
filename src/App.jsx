@@ -84,8 +84,11 @@ export default function ForensicWebsite() {
     'Compression Artefact Detection',
     'Clone & Tamper Analysis',
     'Pixel-Level Investigation & Bit-Planes',
+    'Sensor Noise & PRNU Inconsistency',
+    '2D FFT Spatial Frequency & Resampling Spectrum',
+    'The Ma\'at Lens (Ancient Egyptian Canon Forensics)',
     'Real-time Color & Luminance Histogram',
-    'Forensic Report Export'
+    'Forensic Case Dossier & Evidence Board Export'
   ];
 
   const methodology = [
@@ -96,6 +99,10 @@ export default function ForensicWebsite() {
     {
       title: 'Visual Diffing & Channel Slicing',
       desc: 'Comparing a suspicious copy against a known authentic reference isolates exact per-pixel alterations. Decomposing into single-wavelength channels (Red, Green, Blue) and Laplacian spatial edge filters reveals subtle boundary splices and noise inconsistencies.',
+    },
+    {
+      title: '2D Spatial Frequency Domain (FFT)',
+      desc: 'Converts spatial pixels into the frequency domain centered at DC (0,0). Natural camera optics produce a continuous radial power decay (β ≈ 1.8–2.2). Resampling interpolation, periodic clone lattices, and AI generative models (GAN/diffusion) produce distinct harmonic stars, concentric rings, or abnormal high-frequency attenuation.',
     },
     {
       title: 'Metadata & Provenance Integrity',

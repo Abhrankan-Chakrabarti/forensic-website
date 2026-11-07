@@ -11,6 +11,7 @@ const FILTER_DESCRIPTIONS = {
   bitplanes: 'Bit-Plane Slicer & Steganalysis: Decomposes pixels into individual binary bit-planes (Bit 0 to Bit 7). Unedited natural images show pure sensor noise at Bit 0; structured patterns or text indicate LSB steganographic payloads or digital tampering.',
   noise: 'Sensor Noise & PRNU Inconsistency: Extracts high-frequency physical sensor noise. Authentic camera captures show a uniform, continuous noise floor. AI-inpainted, airbrushed, or cloned patches exhibit flat zero-noise suppression, while foreign splices display sharp noise variance disparity.',
   clones: 'Copy-Move Clone Detection: Identifies duplicated image regions created via clone-stamp, healing brush, or copy-paste operations to hide or replicate objects. Uses spatial block feature matching and shift-vector clustering to isolate identical patches and draw connecting displacement vectors.',
+  fft: '2D Fast Fourier Transform (FFT) & Frequency Spectrum: Decomposes spatial image data into 2D frequency coefficients centered at DC (0,0). Natural photographs exhibit smooth radial 1/f^2 decay. Periodic resampling (bilinear/bicubic resizing), sensor CFA lattices, GAN upsampling grids, and AI generative models produce sharp harmonic spikes, concentric rings, or abnormal high-frequency attenuation.',
 };
 
 function getNoiseHeatmapColor(std) {
@@ -44,6 +45,397 @@ function getNoiseHeatmapColor(std) {
       Math.round(11 + s * (94 - 11)),
     ];
   }
+}
+
+// Inferno Colormap for Fourier Magnitude Spectrum
+function getInfernoColor(t) {
+  const c = Math.max(0, Math.min(1, t));
+  if (c < 0.25) {
+    const s = c / 0.25;
+    return [Math.round(4 + s * 60), Math.round(4 + s * 12), Math.round(20 + s * 90)];
+  } else if (c < 0.5) {
+    const s = (c - 0.25) / 0.25;
+    return [Math.round(64 + s * 118), Math.round(16 + s * 38), Math.round(110 - s * 10)];
+  } else if (c < 0.75) {
+    const s = (c - 0.5) / 0.25;
+    return [Math.round(182 + s * 69), Math.round(54 + s * 82), Math.round(100 - s * 80)];
+  } else {
+    const s = (c - 0.75) / 0.25;
+    return [Math.round(251 + s * 4), Math.round(136 + s * 119), Math.round(20 + s * 235)];
+  }
+}
+
+// Electric Radar Cyan Colormap
+function getRadarCyanColor(t) {
+  const c = Math.max(0, Math.min(1, t));
+  if (c < 0.35) {
+    const s = c / 0.35;
+    return [Math.round(2 + s * 6), Math.round(6 + s * 45), Math.round(23 + s * 65)];
+  } else if (c < 0.7) {
+    const s = (c - 0.35) / 0.35;
+    return [Math.round(8 - s * 2), Math.round(51 + s * 131), Math.round(88 + s * 124)];
+  } else {
+    const s = (c - 0.7) / 0.3;
+    return [Math.round(6 + s * 249), Math.round(182 + s * 73), Math.round(212 + s * 43)];
+  }
+}
+
+// 2D Fast Fourier Transform (FFT) Architecture & Analysis Engine
+const FFT_SIZE = 512;
+const FFT_HALF = 256;
+const FFT_BIT_REV = new Uint16Array(FFT_SIZE);
+let _fftJ = 0;
+for (let i = 0; i < FFT_SIZE - 1; i++) {
+  FFT_BIT_REV[i] = _fftJ;
+  let k = FFT_SIZE >> 1;
+  while (k <= _fftJ) {
+    _fftJ -= k;
+    k >>= 1;
+  }
+  _fftJ += k;
+}
+FFT_BIT_REV[FFT_SIZE - 1] = FFT_SIZE - 1;
+
+function fft1D(real, imag, n) {
+  for (let i = 0; i < n; i++) {
+    const r = FFT_BIT_REV[i];
+    if (i < r) {
+      const tr = real[i]; real[i] = real[r]; real[r] = tr;
+      const ti = imag[i]; imag[i] = imag[r]; imag[r] = ti;
+    }
+  }
+
+  for (let len = 2; len <= n; len <<= 1) {
+    const half = len >> 1;
+    const angle = -2 * Math.PI / len;
+    const wStepR = Math.cos(angle);
+    const wStepI = Math.sin(angle);
+
+    for (let i = 0; i < n; i += len) {
+      let wR = 1.0;
+      let wI = 0.0;
+      for (let k = 0; k < half; k++) {
+        const uR = real[i + k];
+        const uI = imag[i + k];
+        const pos = i + k + half;
+        const vR = real[pos] * wR - imag[pos] * wI;
+        const vI = real[pos] * wI + imag[pos] * wR;
+
+        real[i + k] = uR + vR;
+        imag[i + k] = uI + vI;
+        real[pos] = uR - vR;
+        imag[pos] = uI - vI;
+
+        const nextWR = wR * wStepR - wI * wStepI;
+        wI = wR * wStepI + wI * wStepR;
+        wR = nextWR;
+      }
+    }
+  }
+}
+
+function compute2DFFTSpectrum(img, channel = 'lum', hannWindow = true, boost = 2.5, colormap = 'inferno', detectHarmonics = true) {
+  const N = FFT_SIZE;
+  const halfN = FFT_HALF;
+
+  const sampleCanvas = document.createElement('canvas');
+  sampleCanvas.width = N;
+  sampleCanvas.height = N;
+  const sCtx = sampleCanvas.getContext('2d');
+
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  const minDim = Math.min(w, h);
+  const sx = (w - minDim) / 2;
+  const sy = (h - minDim) / 2;
+  sCtx.drawImage(img, sx, sy, minDim, minDim, 0, 0, N, N);
+
+  const imgData = sCtx.getImageData(0, 0, N, N);
+  const d = imgData.data;
+
+  const real = new Float32Array(N * N);
+  const imag = new Float32Array(N * N);
+
+  // Compute channel intensity and mean
+  let sum = 0;
+  for (let i = 0, p = 0; i < d.length; i += 4, p++) {
+    let val;
+    if (channel === 'red') val = d[i];
+    else if (channel === 'green') val = d[i + 1];
+    else if (channel === 'blue') val = d[i + 2];
+    else val = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+    real[p] = val;
+    sum += val;
+  }
+  const meanVal = sum / (N * N);
+
+  // Apply Hann window and mean centering
+  for (let y = 0; y < N; y++) {
+    const wy = hannWindow ? 0.5 * (1 - Math.cos((2 * Math.PI * y) / N)) : 1.0;
+    const yOff = y * N;
+    for (let x = 0; x < N; x++) {
+      const wx = hannWindow ? 0.5 * (1 - Math.cos((2 * Math.PI * x) / N)) : 1.0;
+      real[yOff + x] = (real[yOff + x] - meanVal) * wx * wy;
+      imag[yOff + x] = 0;
+    }
+  }
+
+  // Row-wise FFT
+  const rowR = new Float32Array(N);
+  const rowI = new Float32Array(N);
+  for (let y = 0; y < N; y++) {
+    const offset = y * N;
+    for (let x = 0; x < N; x++) {
+      rowR[x] = real[offset + x];
+      rowI[x] = imag[offset + x];
+    }
+    fft1D(rowR, rowI, N);
+    for (let x = 0; x < N; x++) {
+      real[offset + x] = rowR[x];
+      imag[offset + x] = rowI[x];
+    }
+  }
+
+  // Column-wise FFT
+  const colR = new Float32Array(N);
+  const colI = new Float32Array(N);
+  for (let x = 0; x < N; x++) {
+    for (let y = 0; y < N; y++) {
+      colR[y] = real[y * N + x];
+      colI[y] = imag[y * N + x];
+    }
+    fft1D(colR, colI, N);
+    for (let y = 0; y < N; y++) {
+      real[y * N + x] = colR[y];
+      imag[y * N + x] = colI[y];
+    }
+  }
+
+  // Shift quadrants (FFT-shift) & Compute log magnitude
+  const shifted = new Float32Array(N * N);
+  let minLog = Infinity;
+  let maxLog = -Infinity;
+
+  for (let y = 0; y < N; y++) {
+    const origY = (y + halfN) % N;
+    const yOff = y * N;
+    for (let x = 0; x < N; x++) {
+      const origX = (x + halfN) % N;
+      const idx = origY * N + origX;
+      const mag = Math.sqrt(real[idx] * real[idx] + imag[idx] * imag[idx]);
+      const logMag = Math.log(1 + boost * 0.05 * mag);
+      shifted[yOff + x] = logMag;
+
+      const distFromDC = Math.hypot(x - halfN, y - halfN);
+      if (distFromDC >= 3) {
+        if (logMag > maxLog) maxLog = logMag;
+      }
+      if (logMag < minLog) minLog = logMag;
+    }
+  }
+  if (maxLog <= minLog) maxLog = minLog + 1;
+
+  // Azimuthal radial profile & peak anomaly detection
+  const radialSum = new Float64Array(halfN);
+  const radialSqSum = new Float64Array(halfN);
+  const radialCount = new Uint32Array(halfN);
+
+  for (let y = 0; y < N; y++) {
+    const dy = y - halfN;
+    const yOff = y * N;
+    for (let x = 0; x < N; x++) {
+      const dx = x - halfN;
+      const r = Math.round(Math.sqrt(dx * dx + dy * dy));
+      if (r < halfN) {
+        const val = shifted[yOff + x];
+        radialSum[r] += val;
+        radialSqSum[r] += val * val;
+        radialCount[r]++;
+      }
+    }
+  }
+
+  const radialMean = new Float32Array(halfN);
+  const radialStd = new Float32Array(halfN);
+  for (let r = 0; r < halfN; r++) {
+    if (radialCount[r] > 0) {
+      const m = radialSum[r] / radialCount[r];
+      radialMean[r] = m;
+      const v = Math.max(0, (radialSqSum[r] / radialCount[r]) - (m * m));
+      radialStd[r] = Math.sqrt(v);
+    }
+  }
+
+  // Linear regression on power law spectral decay slope: ln P(r) ~ -beta * ln(r) + C
+  let sumLnR = 0, sumLnP = 0, sumLnR_LnP = 0, sumLnR2 = 0, nPts = 0;
+  for (let r = 8; r < Math.min(120, halfN); r++) {
+    if (radialMean[r] > 0) {
+      const lnR = Math.log(r);
+      const lnP = Math.log(radialMean[r]);
+      sumLnR += lnR;
+      sumLnP += lnP;
+      sumLnR_LnP += lnR * lnP;
+      sumLnR2 += lnR * lnR;
+      nPts++;
+    }
+  }
+  const slope = nPts > 1 ? (nPts * sumLnR_LnP - sumLnR * sumLnP) / (nPts * sumLnR2 - sumLnR * sumLnR) : -2;
+  const slopeBeta = Math.max(0, -slope);
+
+  // Detect Harmonic Resampling / Periodic lattice peaks
+  const detectedPeaks = [];
+  if (detectHarmonics) {
+    for (let y = 4; y < N - 4; y++) {
+      const dy = y - halfN;
+      const yOff = y * N;
+      for (let x = 4; x < N - 4; x++) {
+        const dx = x - halfN;
+        const r = Math.round(Math.sqrt(dx * dx + dy * dy));
+        if (r < 16 || r >= halfN - 10) continue;
+        if (!(dx > 0 || (dx === 0 && dy > 0))) continue;
+
+        const val = shifted[yOff + x];
+        let isMax = true;
+        for (let ky = -2; ky <= 2 && isMax; ky++) {
+          const kyOff = (y + ky) * N;
+          for (let kx = -2; kx <= 2; kx++) {
+            if (kx === 0 && ky === 0) continue;
+            if (shifted[kyOff + (x + kx)] >= val) {
+              isMax = false;
+              break;
+            }
+          }
+        }
+
+        if (isMax) {
+          const m = radialMean[r];
+          const s = radialStd[r];
+          if (val > m + 3.2 * s) {
+            const snr = ((val - m) / Math.max(0.01, s));
+            detectedPeaks.push({
+              x,
+              y,
+              dx,
+              dy,
+              r,
+              wavelength: (N / r).toFixed(1),
+              freq: ((r / halfN) * 0.5).toFixed(3),
+              snr: snr.toFixed(1),
+            });
+          }
+        }
+      }
+    }
+    detectedPeaks.sort((a, b) => Number(b.snr) - Number(a.snr));
+  }
+
+  // Render to output canvas
+  const outCanvas = document.createElement('canvas');
+  outCanvas.width = N;
+  outCanvas.height = N;
+  const outCtx = outCanvas.getContext('2d');
+  const outImgData = outCtx.createImageData(N, N);
+  const outD = outImgData.data;
+
+  const range = maxLog - minLog;
+  for (let i = 0; i < N * N; i++) {
+    const val = shifted[i];
+    const norm = Math.max(0, Math.min(1, (val - minLog) / range));
+    let rgb;
+    if (colormap === 'radar') {
+      rgb = getRadarCyanColor(norm);
+    } else if (colormap === 'matrix') {
+      const v = Math.round(norm * 255);
+      rgb = [v, v, v];
+    } else {
+      rgb = getInfernoColor(norm);
+    }
+    const idx = i * 4;
+    outD[idx] = rgb[0];
+    outD[idx + 1] = rgb[1];
+    outD[idx + 2] = rgb[2];
+    outD[idx + 3] = 255;
+  }
+  outCtx.putImageData(outImgData, 0, 0);
+
+  // Overlay concentric frequency grid rings (0.1, 0.2, 0.3, 0.4 cy/px)
+  outCtx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+  outCtx.lineWidth = 1;
+  [0.1, 0.2, 0.3, 0.4].forEach((f) => {
+    const rad = Math.round((f / 0.5) * halfN);
+    outCtx.beginPath();
+    outCtx.arc(halfN, halfN, rad, 0, 2 * Math.PI);
+    outCtx.stroke();
+  });
+
+  // DC Center crosshairs
+  outCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+  outCtx.beginPath();
+  outCtx.moveTo(halfN - 8, halfN);
+  outCtx.lineTo(halfN + 8, halfN);
+  outCtx.moveTo(halfN, halfN - 8);
+  outCtx.lineTo(halfN, halfN + 8);
+  outCtx.stroke();
+
+  // Overlay detected harmonic peak reticles
+  if (detectHarmonics && detectedPeaks.length > 0) {
+    const topPeaks = detectedPeaks.slice(0, 8);
+    topPeaks.forEach((p, idx) => {
+      [
+        { px: p.x, py: p.y },
+        { px: N - p.x, py: N - p.y }
+      ].forEach((coord) => {
+        outCtx.strokeStyle = idx === 0 ? '#38bdf8' : '#f43f5e';
+        outCtx.lineWidth = 1.5;
+        outCtx.beginPath();
+        outCtx.arc(coord.px, coord.py, 8, 0, 2 * Math.PI);
+        outCtx.stroke();
+
+        outCtx.beginPath();
+        outCtx.arc(coord.px, coord.py, 2, 0, 2 * Math.PI);
+        outCtx.fillStyle = '#ffffff';
+        outCtx.fill();
+      });
+
+      if (idx < 3) {
+        outCtx.fillStyle = '#38bdf8';
+        outCtx.font = 'bold 10px monospace';
+        outCtx.textAlign = 'left';
+        outCtx.fillText(`λ=${p.wavelength}px`, p.x + 10, p.y + 3);
+      }
+    });
+  }
+
+  // Downsample radial curve for SVG sparkline (32 points)
+  const sparklinePts = [];
+  const step = Math.floor(halfN / 32);
+  let maxRadial = 0;
+  for (let i = 0; i < 32; i++) {
+    const r = i * step + 1;
+    const v = radialMean[r] || 0;
+    if (v > maxRadial) maxRadial = v;
+    sparklinePts.push(v);
+  }
+
+  let verdict = 'Authentic Sensor Decay';
+  let verdictColor = 'text-emerald-400';
+  if (slopeBeta > 2.35) {
+    verdict = 'High-Frequency Suppressed / Synthetic (AI/Blur)';
+    verdictColor = 'text-amber-400';
+  } else if (slopeBeta < 1.65) {
+    verdict = 'Excessive High-Frequency / Foreign Lattice';
+    verdictColor = 'text-rose-400';
+  }
+
+  return {
+    dataUrl: outCanvas.toDataURL('image/png'),
+    slopeBeta: Number(slopeBeta.toFixed(2)),
+    verdict,
+    verdictColor,
+    peaks: detectedPeaks.slice(0, 8),
+    sparklinePts,
+    maxRadial,
+  };
 }
 
 // Spatial Block Matching & Shift-Vector Clustering Algorithm
@@ -221,11 +613,19 @@ export default function ChannelFilterView({
   const [cloneMinDist, setCloneMinDist] = useState(35); // 25, 35, 60
   const [showCloneVectors, setShowCloneVectors] = useState(true);
   const [cloneStats, setCloneStats] = useState(null);
+  const [fftColorMap, setFftColorMap] = useState('inferno'); // 'inferno', 'radar', 'matrix'
+  const [fftBoost, setFftBoost] = useState(2.5);
+  const [fftChannel, setFftChannel] = useState('lum'); // 'lum', 'red', 'green', 'blue'
+  const [fftHannWindow, setFftHannWindow] = useState(true);
+  const [fftDetectHarmonics, setFftDetectHarmonics] = useState(true);
+  const [fftStats, setFftStats] = useState(null);
   const [resultUrl, setResultUrl] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const monoToggleId = useId();
+  const fftHannToggleId = useId();
+  const fftHarmonicsToggleId = useId();
 
-  const applyFilter = useCallback((src, filter, mono, boost, bitPlane, bitChan, nMode, nGain, nWin, cSens, cDist, cVec) => {
+  const applyFilter = useCallback((src, filter, mono, boost, bitPlane, bitChan, nMode, nGain, nWin, cSens, cDist, cVec, fCmap, fBoost, fChan, fHann, fHarm) => {
     if (!src) return;
     setIsProcessing(true);
 
@@ -245,6 +645,14 @@ export default function ChannelFilterView({
       outCanvas.width = w;
       outCanvas.height = h;
       const outCtx = outCanvas.getContext('2d');
+
+      if (filter === 'fft') {
+        const stats = compute2DFFTSpectrum(img, fChan, fHann, fBoost, fCmap, fHarm);
+        setFftStats(stats);
+        setResultUrl(stats.dataUrl);
+        setIsProcessing(false);
+        return;
+      }
 
       if (filter === 'clones') {
         const detection = detectCopyMoveClones(canvas, w, h, cSens, cDist);
@@ -524,10 +932,47 @@ export default function ChannelFilterView({
   useEffect(() => {
     if (!imageSrc) return;
     const timer = setTimeout(() => {
-      applyFilter(imageSrc, activeFilter, monochromeChannels, edgeBoost, selectedBitPlane, bitTargetChannel, noiseMode, noiseGain, noiseWindow, cloneSensitivity, cloneMinDist, showCloneVectors);
+      applyFilter(
+        imageSrc,
+        activeFilter,
+        monochromeChannels,
+        edgeBoost,
+        selectedBitPlane,
+        bitTargetChannel,
+        noiseMode,
+        noiseGain,
+        noiseWindow,
+        cloneSensitivity,
+        cloneMinDist,
+        showCloneVectors,
+        fftColorMap,
+        fftBoost,
+        fftChannel,
+        fftHannWindow,
+        fftDetectHarmonics
+      );
     }, 0);
     return () => clearTimeout(timer);
-  }, [imageSrc, activeFilter, monochromeChannels, edgeBoost, selectedBitPlane, bitTargetChannel, noiseMode, noiseGain, noiseWindow, cloneSensitivity, cloneMinDist, showCloneVectors, applyFilter]);
+  }, [
+    imageSrc,
+    activeFilter,
+    monochromeChannels,
+    edgeBoost,
+    selectedBitPlane,
+    bitTargetChannel,
+    noiseMode,
+    noiseGain,
+    noiseWindow,
+    cloneSensitivity,
+    cloneMinDist,
+    showCloneVectors,
+    fftColorMap,
+    fftBoost,
+    fftChannel,
+    fftHannWindow,
+    fftDetectHarmonics,
+    applyFilter
+  ]);
 
   const exportFilename = activeFilter === 'bitplanes'
     ? `${fileName.replace(/\.[^/.]+$/, '')}_bitplane_${selectedBitPlane}_${bitTargetChannel}.png`
@@ -535,6 +980,8 @@ export default function ChannelFilterView({
     ? `${fileName.replace(/\.[^/.]+$/, '')}_noise_${noiseMode}.png`
     : activeFilter === 'clones'
     ? `${fileName.replace(/\.[^/.]+$/, '')}_copy_move_clones.png`
+    : activeFilter === 'fft'
+    ? `${fileName.replace(/\.[^/.]+$/, '')}_fft_spectrum_${fftColorMap}.png`
     : `${fileName.replace(/\.[^/.]+$/, '')}_${activeFilter}.png`;
 
   return (
@@ -648,6 +1095,20 @@ export default function ChannelFilterView({
             <span>Clone Stamp</span>
             <span className="text-[10px] bg-rose-400/20 text-rose-200 px-1.5 py-0.2 rounded-full font-bold">
               Copy-Move
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveFilter('fft')}
+            className={`px-3 py-1.5 rounded-lg font-medium transition cursor-pointer flex items-center gap-1.5 ${
+              activeFilter === 'fft'
+                ? 'bg-indigo-600 text-white font-semibold shadow-sm shadow-indigo-600/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <span>2D FFT Spectrum</span>
+            <span className="text-[10px] bg-indigo-400/20 text-indigo-200 px-1.5 py-0.2 rounded-full font-bold">
+              Fourier
             </span>
           </button>
         </div>
@@ -915,6 +1376,167 @@ export default function ChannelFilterView({
         </div>
       )}
 
+      {/* 2D FFT Specialized Secondary Control Bar */}
+      {activeFilter === 'fft' && (
+        <div className="w-full bg-slate-950/70 border border-indigo-500/30 rounded-xl p-3 flex flex-col gap-3 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Colormap */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-400 font-mono text-[11px]">Palette:</span>
+                <div className="inline-flex bg-slate-900 border border-slate-800 p-0.5 rounded-lg text-[11px]">
+                  {[
+                    { id: 'inferno', label: 'Inferno' },
+                    { id: 'radar', label: 'Cyan Radar' },
+                    { id: 'matrix', label: 'Matrix B&W' },
+                  ].map((cm) => (
+                    <button
+                      key={cm.id}
+                      type="button"
+                      onClick={() => setFftColorMap(cm.id)}
+                      className={`px-2.5 py-0.5 rounded cursor-pointer transition ${
+                        fftColorMap === cm.id
+                          ? 'bg-indigo-600 text-white font-bold shadow-sm'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {cm.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Target Channel */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-400 font-mono text-[11px]">Channel:</span>
+                <div className="inline-flex bg-slate-900 border border-slate-800 p-0.5 rounded-lg text-[11px]">
+                  {[
+                    { id: 'lum', label: 'Luminance' },
+                    { id: 'red', label: 'Red' },
+                    { id: 'green', label: 'Green' },
+                    { id: 'blue', label: 'Blue' },
+                  ].map((ch) => (
+                    <button
+                      key={ch.id}
+                      type="button"
+                      onClick={() => setFftChannel(ch.id)}
+                      className={`px-2 py-0.5 rounded cursor-pointer transition ${
+                        fftChannel === ch.id
+                          ? 'bg-indigo-600 text-white font-semibold shadow-sm'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {ch.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Hann Window Toggle */}
+              <label htmlFor={fftHannToggleId} className="flex items-center gap-1.5 cursor-pointer select-none text-slate-300 text-[11px]">
+                <input
+                  id={fftHannToggleId}
+                  type="checkbox"
+                  checked={fftHannWindow}
+                  onChange={(e) => setFftHannWindow(e.target.checked)}
+                  className="accent-indigo-500 rounded"
+                />
+                <span>Hann Window (Suppress Edge Cross)</span>
+              </label>
+
+              {/* Detect Harmonics Toggle */}
+              <label htmlFor={fftHarmonicsToggleId} className="flex items-center gap-1.5 cursor-pointer select-none text-slate-300 text-[11px]">
+                <input
+                  id={fftHarmonicsToggleId}
+                  type="checkbox"
+                  checked={fftDetectHarmonics}
+                  onChange={(e) => setFftDetectHarmonics(e.target.checked)}
+                  className="accent-indigo-500 rounded"
+                />
+                <span>Detect Harmonic Peaks</span>
+              </label>
+            </div>
+
+            {/* Dynamic Range / Log Boost */}
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-slate-400 font-mono">Dynamic Boost: <strong>{fftBoost.toFixed(1)}x</strong></span>
+              <input
+                type="range"
+                min="1.0"
+                max="5.0"
+                step="0.5"
+                value={fftBoost}
+                onChange={(e) => setFftBoost(Number(e.target.value))}
+                className="w-24 accent-indigo-500 cursor-pointer"
+              />
+            </div>
+          </div>
+
+          {/* Telemetry and Frequency Analytics Bar */}
+          {fftStats && (
+            <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-[11px]">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400 font-mono">Decay Exponent:</span>
+                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 font-mono font-bold text-indigo-300">
+                    β = {fftStats.slopeBeta}
+                  </span>
+                  <span className={`font-semibold ${fftStats.verdictColor}`}>
+                    ({fftStats.verdict})
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 font-mono">
+                  <span className="text-slate-400">Harmonics:</span>
+                  <span className={`px-2 py-0.5 rounded border ${
+                    fftStats.peaks.length > 0
+                      ? 'bg-rose-500/10 border-rose-500/40 text-rose-300 font-bold'
+                      : 'bg-emerald-500/10 border-emerald-500/40 text-emerald-300'
+                  }`}>
+                    {fftStats.peaks.length > 0 ? `${fftStats.peaks.length} Spikes Detected` : '0 Lattice Spikes (Clean)'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Sparkline Radial Power Spectrum Chart */}
+              {fftStats.sparklinePts && fftStats.sparklinePts.length > 0 && (
+                <div className="flex items-center gap-2 font-mono text-[10px] text-slate-400">
+                  <span>P(r) DC→Nyquist:</span>
+                  <svg className="w-28 h-5 overflow-visible" viewBox="0 0 100 20">
+                    <polyline
+                      fill="none"
+                      stroke="#818cf8"
+                      strokeWidth="1.5"
+                      points={fftStats.sparklinePts.map((val, idx) => {
+                        const x = (idx / (fftStats.sparklinePts.length - 1)) * 100;
+                        const y = 20 - (val / Math.max(0.1, fftStats.maxRadial)) * 18;
+                        return `${x.toFixed(1)},${y.toFixed(1)}`;
+                      }).join(' ')}
+                    />
+                  </svg>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Peak list pills if detected */}
+          {fftStats && fftStats.peaks && fftStats.peaks.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px] font-mono">
+              <span className="text-slate-400">Prominent Lattices:</span>
+              {fftStats.peaks.slice(0, 5).map((p, idx) => (
+                <span
+                  key={idx}
+                  className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-cyan-300"
+                  title={`Offset: (${p.dx}, ${p.dy}), Freq: ${p.freq} cy/px, SNR: ${p.snr}x`}
+                >
+                  λ = {p.wavelength}px ({p.freq} cy/px, SNR {p.snr}x)
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Description Context Pill */}
       <div className="w-full text-xs text-slate-400 bg-slate-950/60 border border-slate-800/80 px-3.5 py-2 rounded-xl flex items-center gap-2">
         <span className="text-cyan-400 text-sm">💡</span>
@@ -933,6 +1555,8 @@ export default function ChannelFilterView({
               : 'Variance Heatmap: Computes sliding-window standard deviation of sensor noise. Deep indigo/purple highlights smoothed, cloned, or AI-inpainted areas with zero noise; emerald green represents natural camera ISO sensor grain; crimson red highlights high-variance spliced patches.'
             : activeFilter === 'clones'
             ? 'Copy-Move Forgery Detection: Computes spatial block features and clusters displacement vectors (ΔX, ΔY). Cyan boxes mark cloned source regions, rose boxes mark pasted targets, and amber vectors connect matched duplicate patches.'
+            : activeFilter === 'fft'
+            ? '2D Fast Fourier Transform (FFT) Magnitude Spectrum: DC component is centered at (256, 256) with concentric circles indicating spatial frequencies up to 0.5 cycles/pixel. Natural sensor decay follows β ≈ 1.8–2.2. Sharp starburst spikes or off-center reticles expose periodic resizing (resampling grid), CFA demosaicing lattices, or generative AI upsampling.'
             : FILTER_DESCRIPTIONS[activeFilter]}
         </span>
       </div>
